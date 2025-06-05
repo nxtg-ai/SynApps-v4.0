@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: synapps-config
+data:
+  # Configuration values for the SynApps orchestrator
+  LOG_LEVEL: "info"
+  MAX_WORKERS: "2"
+  FRONTEND_URL: "https://synapps-app.vercel.app"

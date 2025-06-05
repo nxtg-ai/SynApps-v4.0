@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Orchestrator service
+  orchestrator:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - FRONTEND_URL=http://localhost:3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STABILITY_API_KEY=${STABILITY_API_KEY}
+    networks:
+      - synapps-network
+    volumes:
+      - ../../apps/orchestrator:/app
+      - ../../apps/applets:/app/applets
+    restart: unless-stopped
+
+  # Frontend service
+  frontend:
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - orchestrator
+    networks:
+      - synapps-network
+    restart: unless-stopped
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WEBSOCKET_URL=ws://localhost:8000/ws
+
+networks:
+  synapps-network:
+    driver: bridge

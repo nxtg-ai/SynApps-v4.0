@@ -1,0 +1,102 @@
+@startuml SynApps Architecture
+
+!define RECTANGLE class
+!define COMPONENT component
+
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+skinparam monochrome false
+skinparam backgroundColor #FFFFFF
+skinparam rectangleBackgroundColor #E8F2FE
+skinparam componentBackgroundColor #E8F2FE
+skinparam roundCorner 10
+skinparam padding 5
+
+package "Frontend" {
+  COMPONENT [React Application] as ReactApp
+  COMPONENT [React Flow] as ReactFlow
+  COMPONENT [Monaco Editor] as Monaco
+  COMPONENT [WebSocket Client] as WSClient
+  COMPONENT [HTTP Client] as HTTPClient
+
+  RECTANGLE [Dashboard] as Dashboard
+  RECTANGLE [Workflow Editor] as Editor
+  RECTANGLE [History View] as History
+  RECTANGLE [Applet Library] as Library
+  RECTANGLE [Notifications] as Notifications
+
+  ReactApp --> ReactFlow : uses
+  ReactApp --> Monaco : uses
+  ReactApp --> WSClient : uses
+  ReactApp --> HTTPClient : uses
+  ReactApp --> Dashboard : contains
+  ReactApp --> Editor : contains
+  ReactApp --> History : contains
+  ReactApp --> Library : contains
+  ReactApp --> Notifications : contains
+}
+
+package "Backend" {
+  COMPONENT [FastAPI Server] as FastAPI
+  COMPONENT [Orchestrator Core] as Core
+  COMPONENT [WebSocket Server] as WSServer
+  COMPONENT [REST API] as RESTAPI
+  COMPONENT [Flow Executor] as Executor
+  COMPONENT [Message Router] as Router
+  COMPONENT [Status Tracker] as Tracker
+
+  FastAPI --> WSServer : contains
+  FastAPI --> RESTAPI : contains
+  FastAPI --> Core : contains
+  Core --> Executor : contains
+  Core --> Router : contains
+  Core --> Tracker : contains
+}
+
+package "Applets" {
+  COMPONENT [BaseApplet Interface] as BaseApplet
+  COMPONENT [Writer Applet] as Writer
+  COMPONENT [Artist Applet] as Artist
+  COMPONENT [Memory Applet] as Memory
+
+  BaseApplet <|-- Writer : implements
+  BaseApplet <|-- Artist : implements
+  BaseApplet <|-- Memory : implements
+}
+
+package "External Services" {
+  COMPONENT [OpenAI API] as OpenAI
+  COMPONENT [Stability API] as Stability
+  COMPONENT [Vector Store] as VectorStore
+}
+
+cloud "Infrastructure" {
+  COMPONENT [Docker Containers] as Docker
+  COMPONENT [Kubernetes Cluster] as K8s
+  COMPONENT [Vercel (Frontend)] as Vercel
+  COMPONENT [Fly.io (Backend)] as Fly
+
+  Docker --> K8s : deployed on
+  Vercel --> ReactApp : hosts
+  Fly --> FastAPI : hosts
+}
+
+' Connections
+HTTPClient --> RESTAPI : HTTP requests
+WSClient --> WSServer : WebSocket connection
+Core --> BaseApplet : messages
+
+Writer --> OpenAI : API calls
+Artist --> Stability : API calls
+Memory --> VectorStore : storage
+
+' Flow of data
+RESTAPI --> Executor : executes flows
+Executor --> Router : routes messages
+Router --> BaseApplet : routes to appropriate applet
+BaseApplet --> Tracker : reports status
+Tracker --> WSServer : sends updates
+WSServer --> WSClient : pushes status
+WSClient --> Notifications : updates UI
+
+@enduml

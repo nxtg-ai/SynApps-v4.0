@@ -1,0 +1,183 @@
+{
+  "Frontend": [
+    {
+      "task": "Setup React + TypeScript application",
+      "description": "Create a modern web app using React with TypeScript",
+      "status": "complete"
+    },
+    {
+      "task": "Implement workflow canvas",
+      "description": "Use React Flow or D3.js to render interactive workflow graphs",
+      "status": "complete"
+    },
+    {
+      "task": "Add animations",
+      "description": "Integrate anime.js for node animations and visual feedback",
+      "status": "complete"
+    },
+    {
+      "task": "Create template gallery",
+      "description": "Add UI for one-click template selection and workflow creation",
+      "status": "complete"
+    },
+    {
+      "task": "Implement WebSocket client",
+      "description": "For real-time status updates from orchestrator",
+      "status": "complete"
+    },
+    {
+      "task": "Add Monaco editor",
+      "description": "For AI-assisted code editing of applets",
+      "status": "complete"
+    },
+    {
+      "task": "Implement browser notifications",
+      "description": "For background execution alerts",
+      "status": "complete"
+    },
+    {
+      "task": "Create status indicators",
+      "description": "Visual feedback for active, idle, success, error states",
+      "status": "complete"
+    }
+  ],
+  "Backend/Orchestrator": [
+    {
+      "task": "Create FastAPI application",
+      "description": "Set up FastAPI server for orchestrator backend",
+      "status": "complete"
+    },
+    {
+      "task": "Implement Applet base class",
+      "description": "Define common interface for all applets",
+      "status": "complete"
+    },
+    {
+      "task": "Create orchestrator core",
+      "description": "Lightweight message routing between applets",
+      "status": "complete"
+    },
+    {
+      "task": "Set up WebSocket server",
+      "description": "For real-time status updates to frontend",
+      "status": "complete"
+    },
+    {
+      "task": "Implement background execution",
+      "description": "Run workflows asynchronously with job IDs",
+      "status": "complete"
+    },
+    {
+      "task": "Add /ai/suggest endpoint",
+      "description": "For AI-assisted code editing and suggestions",
+      "status": "complete"
+    }
+  ],
+  "Applets": [
+    {
+      "task": "Implement WriterApplet",
+      "description": "Text generation using gpt-4.1 API",
+      "status": "complete"
+    },
+    {
+      "task": "Implement ArtistApplet",
+      "description": "Image generation using Stable Diffusion or dall-e-3",
+      "status": "complete"
+    },
+    {
+      "task": "Implement MemoryApplet",
+      "description": "Vector store for context management",
+      "status": "complete"
+    },
+    {
+      "task": "Create applet loading mechanism",
+      "description": "Dynamic loading of applets in orchestrator",
+      "status": "complete"
+    }
+  ],
+  "Real-Time/Notif": [
+    {
+      "task": "Create workflow.updates event channel",
+      "description": "For orchestration status pushes",
+      "status": "complete"
+    },
+    {
+      "task": "Implement notification system",
+      "description": "In-app and browser notifications",
+      "status": "complete"
+    },
+    {
+      "task": "Add session history",
+      "description": "Log of workflow runs with timestamps",
+      "status": "complete"
+    }
+  ],
+  "DevOps": [
+    {
+      "task": "Create Dockerfiles",
+      "description": "For orchestrator and services",
+      "status": "complete"
+    },
+    {
+      "task": "Set up docker-compose",
+      "description": "For local development",
+      "status": "complete"
+    },
+    {
+      "task": "Configure GitHub Actions",
+      "description": "For CI/CD: lint → test → build → container publish",
+      "status": "complete"
+    },
+    {
+      "task": "Create deployment scripts",
+      "description": "For Vercel (frontend) and Fly.io (backend)",
+      "status": "complete"
+    }
+  ],
+  "Docs": [
+    {
+      "task": "Create README.md",
+      "description": "With installation, dev, and walkthrough",
+      "status": "complete"
+    },
+    {
+      "task": "Add JSDoc and docstrings",
+      "description": "Inline documentation for all code",
+      "status": "complete"
+    },
+    {
+      "task": "Generate architecture diagrams",
+      "description": "Using PlantUML",
+      "status": "complete"
+    }
+  ],
+  "Testing": [
+    {
+      "task": "Write orchestrator unit tests",
+      "description": "For message routing and flow execution",
+      "status": "complete"
+    },
+    {
+      "task": "Create applet tests",
+      "description": "For each applet's functionality",
+      "status": "complete"
+    },
+    {
+      "task": "Implement E2E tests",
+      "description": "Using Cypress for full workflow testing",
+      "status": "in-progress"
+    }
+  ],
+  "Commercialization": [
+    {
+      "task": "Implement BillingGuard middleware",
+      "description": "For rate-limiting and tier checks",
+      "status": "complete"
+    },
+    {
+      "task": "Add freemium feature flags",
+      "description": "To control access to pro features",
+      "status": "complete"
+    }
+  ]
+}

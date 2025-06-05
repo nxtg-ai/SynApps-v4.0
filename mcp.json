@@ -1,0 +1,111 @@
+{
+  "name": "synapps-mvp",
+  "version": "0.1.0",
+  "description": "SynApps MVP - Web-based visual platform for modular AI agents",
+  "services": {
+    "web-frontend": {
+      "directory": "apps/web-frontend",
+      "buildCommand": "npm run build",
+      "devCommand": "npm run dev",
+      "env": [
+        "REACT_APP_API_URL",
+        "REACT_APP_WEBSOCKET_URL",
+        "REACT_APP_OPENAI_KEY"
+      ],
+      "port": 3000
+    },
+    "orchestrator": {
+      "directory": "apps/orchestrator",
+      "buildCommand": "pip install -e .",
+      "devCommand": "uvicorn main:app --reload",
+      "env": [
+        "OPENAI_API_KEY",
+        "STABILITY_API_KEY",
+        "FRONTEND_URL",
+        "PORT"
+      ],
+      "port": 8000
+    },
+    "writer-applet": {
+      "directory": "apps/applets/writer",
+      "buildCommand": "pip install -e .",
+      "env": [
+        "OPENAI_API_KEY"
+      ]
+    },
+    "artist-applet": {
+      "directory": "apps/applets/artist",
+      "buildCommand": "pip install -e .",
+      "env": [
+        "STABILITY_API_KEY"
+      ]
+    },
+    "memory-applet": {
+      "directory": "apps/applets/memory",
+      "buildCommand": "pip install -e .",
+      "env": []
+    }
+  },
+  "eventChannels": {
+    "workflow.updates": {
+      "description": "Real-time workflow status updates",
+      "producer": "orchestrator",
+      "consumers": ["web-frontend"]
+    },
+    "agent.status": {
+      "description": "Build agent status updates",
+      "producer": "builder",
+      "consumers": ["cli"]
+    }
+  },
+  "commands": {
+    "dev": {
+      "description": "Start all services in development mode",
+      "script": [
+        "cd apps/orchestrator && python -m uvicorn main:app --reload --port 8000 &",
+        "cd apps/web-frontend && npm run dev"
+      ]
+    },
+    "build": {
+      "description": "Build all services",
+      "script": [
+        "cd apps/orchestrator && pip install -e .",
+        "cd apps/applets/writer && pip install -e .",
+        "cd apps/applets/artist && pip install -e .",
+        "cd apps/applets/memory && pip install -e .",
+        "cd apps/web-frontend && npm run build"
+      ]
+    },
+    "test": {
+      "description": "Run all tests",
+      "script": [
+        "cd apps/orchestrator && pytest",
+        "cd apps/web-frontend && npm test"
+      ]
+    },
+    "docker-build": {
+      "description": "Build Docker containers",
+      "script": [
+        "docker-compose -f infra/docker/docker-compose.yml build"
+      ]
+    },
+    "docker-run": {
+      "description": "Run with Docker Compose",
+      "script": [
+        "docker-compose -f infra/docker/docker-compose.yml up"
+      ]
+    },
+    "deploy-vercel": {
+      "description": "Deploy frontend to Vercel",
+      "script": [
+        "cd apps/web-frontend && vercel"
+      ]
+    },
+    "deploy-fly": {
+      "description": "Deploy backend to Fly.io",
+      "script": [
+        "cd apps/orchestrator && fly deploy"
+      ]
+    }
+  }
+}

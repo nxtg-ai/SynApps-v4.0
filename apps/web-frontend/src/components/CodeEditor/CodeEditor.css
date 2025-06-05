@@ -1,0 +1,202 @@
+/* CodeEditor component styles */
+
+.code-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.code-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.applet-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.applet-type {
+  font-weight: 600;
+  background-color: #e6f7ff;
+  color: #1890ff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.file-name {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.save-button,
+.close-button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-button {
+  background-color: #1890ff;
+  color: white;
+  border: none;
+}
+
+.save-button:hover {
+  background-color: #40a9ff;
+}
+
+.close-button {
+  background-color: transparent;
+  border: 1px solid #d9d9d9;
+  color: #666;
+}
+
+.close-button:hover {
+  border-color: #40a9ff;
+  color: #40a9ff;
+}
+
+.editor-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+.ai-assistant {
+  padding: 16px;
+  background-color: #ffffff;
+  border-top: 1px solid #e8e8e8;
+}
+
+.ai-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.ai-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.diff-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.apply-button,
+.cancel-button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.apply-button {
+  background-color: #52c41a;
+  color: white;
+  border: none;
+}
+
+.apply-button:hover {
+  background-color: #73d13d;
+}
+
+.cancel-button {
+  background-color: transparent;
+  border: 1px solid #d9d9d9;
+  color: #666;
+}
+
+.cancel-button:hover {
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+}
+
+.suggestion-input {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.suggestion-input input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.suggestion-input input:focus {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  outline: none;
+}
+
+.generate-button {
+  padding: 8px 16px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.generate-button:hover {
+  background-color: #40a9ff;
+}
+
+.generate-button:disabled {
+  background-color: #d9d9d9;
+  cursor: not-allowed;
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-action {
+  padding: 6px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.quick-action:hover {
+  background-color: #e6f7ff;
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.quick-action:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}

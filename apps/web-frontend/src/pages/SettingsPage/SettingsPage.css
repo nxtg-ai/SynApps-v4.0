@@ -1,0 +1,176 @@
+/* SettingsPage component styles */
+
+.settings-page {
+  display: flex;
+  gap: 24px;
+}
+
+.settings-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.settings-section h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group.checkbox {
+  flex-direction: row;
+  align-items: center;
+}
+
+.form-group label {
+  font-size: 0.95rem;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-group.checkbox label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.form-group.checkbox input {
+  margin-right: 8px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+  outline: none;
+}
+
+.input-description {
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 4px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.save-button,
+.reset-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-button {
+  background-color: #1890ff;
+  color: white;
+  border: none;
+}
+
+.save-button:hover {
+  background-color: #40a9ff;
+}
+
+.reset-button {
+  background-color: white;
+  border: 1px solid #d9d9d9;
+  color: #ff4d4f;
+}
+
+.reset-button:hover {
+  border-color: #ff4d4f;
+  color: #ff4d4f;
+}
+
+.settings-info {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.info-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.info-section h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.info-section p {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+  margin: 0 0 12px;
+}
+
+.info-section ul {
+  padding-left: 16px;
+  margin: 0;
+}
+
+.info-section li {
+  margin-bottom: 8px;
+}
+
+.info-section a {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.info-section a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .settings-page {
+    flex-direction: column;
+  }
+  
+  .settings-info {
+    width: 100%;
+  }
+}
