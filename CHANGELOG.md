@@ -1,9 +1,32 @@
 # Changelog
 
-All notable changes to the SynApps MVP project will be documented in this file.
+All notable changes to the SynApps project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.3.0] - 2025-06-06
+
+### Added
+
+- **Database Persistence**
+  - Implemented SQLAlchemy async ORM for database operations
+  - Created models for flows, nodes, edges, and workflow runs
+  - Added Alembic migrations for database schema management
+  - Implemented repository pattern for data access
+
+### Fixed
+
+- **Workflow Execution Issues**
+  - Consolidated duplicate `Orchestrator` class definitions
+  - Fixed inconsistent handling of Pydantic models vs dictionaries
+  - Ensured proper dictionary access for status objects
+  - Fixed the `load_applet` method to properly load applet modules
+
+- **Async Function Handling**
+  - Properly awaited coroutines for database initialization and connection closing
+  - Fixed async patterns in workflow execution
+  - Improved error handling during async operations
 
 ## [0.2.0] - 2025-05-31
 

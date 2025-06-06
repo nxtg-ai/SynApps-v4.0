@@ -1,6 +1,6 @@
-# SynApps MVP
+# SynApps v4.0
 
-A web-based visual platform for modular AI agents.
+A web-based visual platform for modular AI agents with database persistence and improved workflow execution.
 
 ## Introduction
 
@@ -27,14 +27,15 @@ A lightweight **SynApps Orchestrator** routes messages between these applets, se
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/synapps/synapps-mvp.git
-   cd synapps-mvp
+   git clone https://github.com/nxtg-ai/SynApps-v4.0.git
+   cd SynApps-v4.0
    ```
 
-2. Create a `.env` file in the root of the project with your API keys:
+2. Create a `.env` file in the root of the project with your API keys and database URL:
    ```
    OPENAI_API_KEY=your_openai_api_key
    STABILITY_API_KEY=your_stability_api_key
+   DATABASE_URL=sqlite+aiosqlite:///synapps.db
    ```
 
 3. Build and run the containers:
@@ -56,11 +57,16 @@ A lightweight **SynApps Orchestrator** routes messages between these applets, se
 2. Create a virtual environment and install dependencies:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # On Windows: venv\\Scripts\\activate
-   pip install -e .
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
    ```
 
-3. Run the development server:
+3. Initialize the database:
+   ```bash
+   alembic upgrade head
+   ```
+
+4. Run the development server:
    ```bash
    uvicorn main:app --reload
    ```
@@ -86,9 +92,10 @@ A lightweight **SynApps Orchestrator** routes messages between these applets, se
 
 SynApps follows a microkernel architecture:
 
-- **Orchestrator:** A lightweight message routing core that passes data between applets.
+- **Orchestrator:** A lightweight message routing core that passes data between applets and manages workflow execution.
 - **Applets:** Self-contained AI micro-agents implementing a standard interface to perform specialized tasks.
 - **Frontend:** React app with a visual workflow editor, built on React Flow and anime.js for animations.
+- **Database:** SQLite with async SQLAlchemy ORM for persistent storage of workflows and execution state.
 
 ## Applets
 
@@ -100,12 +107,21 @@ The MVP includes three core applets:
 
 ## Deployment
 
-The MVP is configured for deployment to:
+The application is configured for deployment to:
 
 - **Frontend:** Vercel
 - **Backend:** Fly.io
 
 CI/CD pipelines are set up using GitHub Actions.
+
+## Database
+
+SynApps v4.0 uses SQLAlchemy with async support for database operations:
+
+- **ORM Models:** SQLAlchemy models for flows, nodes, edges, and workflow runs
+- **Migrations:** Alembic for database schema migrations
+- **Repository Pattern:** Clean separation of database access logic
+- **Async Support:** Full async/await pattern for database operations
 
 ## Development Workflow
 
