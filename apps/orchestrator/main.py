@@ -19,9 +19,14 @@ from typing import Any, Dict, List, Optional, Type
 # Add the parent directory to the Python path so we can import the apps package
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+# Import database modules
+from db import init_db, close_db_connections
+from repositories import FlowRepository, WorkflowRunRepository
+from models import FlowModel, FlowNodeModel, FlowEdgeModel, WorkflowRunStatusModel
 
 # Configure logging
 logging.basicConfig(
@@ -84,14 +89,27 @@ class WorkflowRunStatus(BaseModel):
     results: Dict[str, Any] = {}
     error: Optional[str] = None
 
-# Global state (in-memory for MVP)
-active_flows: Dict[str, Flow] = {}
-workflow_runs: Dict[str, WorkflowRunStatus] = {}
-applet_registry: Dict[str, Type['BaseApplet']] = {}
+# Global state - connection management
 connected_clients: List[WebSocket] = []
+applet_registry: Dict[str, Type['BaseApplet']] = {}
+
+# Database initialization
+@app.on_event("startup")
+async def startup_event():
+    """Initialize the database on application startup."""
+    logger.info("Initializing database...")
+    await init_db()
+    logger.info("Database initialization complete")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connections on application shutdown."""
+    logger.info("Closing database connections...")
+    await close_db_connections()
+    logger.info("Database connections closed")
 
 # WebSocket connection manager
-async def broadcast_status(status: WorkflowRunStatus):
+async def broadcast_status(status: Dict[str, Any]):
     """Broadcast workflow status to all connected clients."""
     if not connected_clients:
         logger.warning("No connected clients to broadcast to")
@@ -99,7 +117,7 @@ async def broadcast_status(status: WorkflowRunStatus):
     
     message = {
         "type": "workflow.status",
-        "data": status.dict()
+        "data": status
     }
     
     for client in connected_clients:
@@ -113,6 +131,7 @@ async def broadcast_status(status: WorkflowRunStatus):
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     connected_clients.append(websocket)
+    logger.info(f"WebSocket client connected. Total clients: {len(connected_clients)}")
     
     try:
         while True:
@@ -120,10 +139,14 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         logger.info("Client disconnected")
-        connected_clients.remove(websocket)
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)
+        logger.info(f"WebSocket client disconnected. Remaining clients: {len(connected_clients)}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
-        connected_clients.remove(websocket)
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)
+        logger.info(f"WebSocket client disconnected due to error. Remaining clients: {len(connected_clients)}")
 
 # Base Applet class
 class BaseApplet:
@@ -142,6 +165,13 @@ class BaseApplet:
     async def on_message(self, message: AppletMessage) -> AppletMessage:
         """Process an incoming message and return a response."""
         raise NotImplementedError("Applets must implement on_message")
+
+def status_to_dict(s):
+    """Convert a Pydantic model to a dictionary, handling both v1 and v2 Pydantic."""
+    if isinstance(s, dict):
+        return s
+    # Handle both Pydantic v1 (dict) and v2 (model_dump)
+    return s.model_dump() if hasattr(s, 'model_dump') else s.dict()
 
 # Orchestrator Core
 class Orchestrator:
@@ -167,12 +197,11 @@ class Orchestrator:
         except (ImportError, AttributeError) as e:
             logger.error(f"Failed to load applet '{applet_type}': {e}")
             raise ValueError(f"Applet type '{applet_type}' not found")
-    
     @staticmethod
     def create_run_id() -> str:
         """Generate a unique run ID."""
         return str(uuid.uuid4())
-    
+        
     @staticmethod
     async def execute_flow(flow: Flow, input_data: Dict[str, Any]) -> str:
         """Execute a flow and return the run ID."""
@@ -181,44 +210,50 @@ class Orchestrator:
         # Create workflow run status
         status = WorkflowRunStatus(
             run_id=run_id,
-            flow_id=flow.id,
+            flow_id=flow["id"],
             status="running",
             start_time=time.time(),
-            total_steps=len(flow.nodes)
+            total_steps=len(flow["nodes"])
         )
-        workflow_runs[run_id] = status
+        
+        # Convert status to dictionary
+        status_dict = status.model_dump() if hasattr(status, 'model_dump') else status.dict()
+        
+        # Save workflow run status to database
+        workflow_run_repo = WorkflowRunRepository()
+        await workflow_run_repo.save(status_dict)
         
         # Broadcast initial status
-        await broadcast_status(status)
+        await broadcast_status(status_dict)
         
         # Start execution in background task
         asyncio.create_task(Orchestrator._execute_flow_async(run_id, flow, input_data))
         
         return run_id
-    
     @staticmethod
-    async def _execute_flow_async(run_id: str, flow: Flow, input_data: Dict[str, Any]):
-        """Execute the flow asynchronously."""
-        status = workflow_runs[run_id]
+    async def _execute_flow_async(run_id: str, flow: dict, input_data: Dict[str, Any]):
+        workflow_run_repo = WorkflowRunRepository()
+        status = await workflow_run_repo.get_by_run_id(run_id)
         
         # Create a mapping of node IDs to node data
-        nodes_by_id = {node.id: node for node in flow.nodes}
+        nodes_by_id = {node["id"]: node for node in flow["nodes"]}
         
         # Create an adjacency list for the graph
         graph = {}
-        for edge in flow.edges:
-            if edge.source not in graph:
-                graph[edge.source] = []
-            graph[edge.source].append(edge.target)
+        for edge in flow["edges"]:
+            if edge["source"] not in graph:
+                graph[edge["source"]] = []
+            graph[edge["source"]].append(edge["target"])
         
         # Find start nodes (nodes with no incoming edges)
-        target_nodes = set(edge.target for edge in flow.edges)
-        start_nodes = [node.id for node in flow.nodes if node.id not in target_nodes]
+        target_nodes = set(edge["target"] for edge in flow["edges"])
+        start_nodes = [node["id"] for node in flow["nodes"] if node["id"] not in target_nodes]
         
         if not start_nodes:
-            status.status = "error"
-            status.error = "No start node found in flow"
-            status.end_time = time.time()
+            status["status"] = "error"
+            status["error"] = "No start node found in flow"
+            status["end_time"] = time.time()
+            await workflow_run_repo.save(status)
             await broadcast_status(status)
             return
         
@@ -245,19 +280,20 @@ class Orchestrator:
                     node = nodes_by_id[node_id]
                     
                     # Update status
-                    status.current_applet = node.type
-                    status.progress += 1
+                    status["current_applet"] = node["type"]
+                    status["progress"] += 1
+                    await workflow_run_repo.save(status)
                     await broadcast_status(status)
                     
                     # Skip if not an applet node
-                    if node.type.lower() in ["start", "end"]:
+                    if node["type"].lower() in ["start", "end"]:
                         if node_id in graph:
                             next_nodes.extend(graph[node_id])
                         continue
                     
                     # Load and execute applet
                     try:
-                        applet = await Orchestrator.load_applet(node.type.lower())
+                        applet = await Orchestrator.load_applet(node["type"].lower())
                         
                         # Create message
                         message = AppletMessage(
@@ -271,7 +307,7 @@ class Orchestrator:
                         
                         # Store result in context
                         context["results"][node_id] = {
-                            "type": node.type,
+                            "type": node["type"],
                             "output": response.content
                         }
                         
@@ -283,31 +319,34 @@ class Orchestrator:
                             next_nodes.extend(graph[node_id])
                             
                             # Animate edges
-                            for edge in flow.edges:
-                                if edge.source == node_id:
-                                    edge.animated = True
+                            for edge in flow["edges"]:
+                                if edge["source"] == node_id:
+                                    edge["animated"] = True
                     
                     except Exception as e:
-                        logger.error(f"Error executing applet '{node.type}': {e}")
-                        status.status = "error"
-                        status.error = f"Error in applet '{node.type}': {str(e)}"
-                        status.end_time = time.time()
+                        logger.error(f"Error executing applet '{node['type']}': {e}")
+                        status["status"] = "error"
+                        status["error"] = f"Error in applet '{node['type']}': {str(e)}"
+                        status["end_time"] = time.time()
+                        await workflow_run_repo.save(status)
                         await broadcast_status(status)
                         return
                 
                 current_nodes = next_nodes
             
             # Workflow completed successfully
-            status.status = "success"
-            status.end_time = time.time()
-            status.results = context["results"]
+            status["status"] = "success"
+            status["end_time"] = time.time()
+            status["results"] = context["results"]
+            await workflow_run_repo.save(status)
             await broadcast_status(status)
             
         except Exception as e:
             logger.error(f"Error executing workflow: {e}")
-            status.status = "error"
-            status.error = f"Workflow execution error: {str(e)}"
-            status.end_time = time.time()
+            status["status"] = "error"
+            status["error"] = f"Workflow execution error: {str(e)}"
+            status["end_time"] = time.time()
+            await workflow_run_repo.save(status)
             await broadcast_status(status)
 
 # API Routes
@@ -346,49 +385,52 @@ async def list_applets():
 @app.post("/flows")
 async def create_flow(flow: Flow):
     """Create or update a flow."""
-    active_flows[flow.id] = flow
+    await FlowRepository.save(flow.dict())
     return {"message": "Flow created", "id": flow.id}
 
 @app.get("/flows")
 async def list_flows():
     """List all flows."""
-    return list(active_flows.values())
+    return await FlowRepository.get_all()
 
 @app.get("/flows/{flow_id}")
 async def get_flow(flow_id: str):
     """Get a flow by ID."""
-    if flow_id not in active_flows:
+    flow = await FlowRepository.get_by_id(flow_id)
+    if not flow:
         raise HTTPException(status_code=404, detail="Flow not found")
-    return active_flows[flow_id]
+    return flow
 
 @app.delete("/flows/{flow_id}")
 async def delete_flow(flow_id: str):
     """Delete a flow."""
-    if flow_id not in active_flows:
+    flow = await FlowRepository.get_by_id(flow_id)
+    if not flow:
         raise HTTPException(status_code=404, detail="Flow not found")
-    del active_flows[flow_id]
+    await FlowRepository.delete(flow_id)
     return {"message": "Flow deleted"}
 
 @app.post("/flows/{flow_id}/run")
 async def run_flow(flow_id: str, input_data: Dict[str, Any]):
     """Run a flow with the given input data."""
-    if flow_id not in active_flows:
+    flow = await FlowRepository.get_by_id(flow_id)
+    if not flow:
         raise HTTPException(status_code=404, detail="Flow not found")
-    
-    run_id = await Orchestrator.execute_flow(active_flows[flow_id], input_data)
+    run_id = await Orchestrator.execute_flow(flow, input_data)
     return {"run_id": run_id}
 
 @app.get("/runs")
 async def list_runs():
     """List all workflow runs."""
-    return list(workflow_runs.values())
+    return await WorkflowRunRepository.get_all()
 
 @app.get("/runs/{run_id}")
 async def get_run(run_id: str):
     """Get a workflow run by ID."""
-    if run_id not in workflow_runs:
+    run = await WorkflowRunRepository.get_by_run_id(run_id)
+    if not run:
         raise HTTPException(status_code=404, detail="Run not found")
-    return workflow_runs[run_id]
+    return run
 
 @app.post("/ai/suggest")
 async def ai_suggest(data: Dict[str, str]):
