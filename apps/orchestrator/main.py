@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 # Import database modules
+from contextlib import asynccontextmanager
 from db import init_db, close_db_connections
 from repositories import FlowRepository, WorkflowRunRepository
 from models import FlowModel, FlowNodeModel, FlowEdgeModel, WorkflowRunStatusModel
@@ -35,8 +36,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger("orchestrator")
 
-# Initialize FastAPI app
-app = FastAPI(title="SynApps Orchestrator")
+# Define lifespan context manager for database initialization and cleanup
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for database initialization and cleanup."""
+    # Startup: Initialize the database
+    logger.info("Initializing database...")
+    await init_db()
+    logger.info("Database initialization complete")
+    
+    yield
+    
+    # Shutdown: Close database connections
+    logger.info("Closing database connections...")
+    await close_db_connections()
+    logger.info("Database connections closed")
+
+# Initialize FastAPI app with lifespan
+app = FastAPI(title="SynApps Orchestrator", lifespan=lifespan)
 
 # Configure CORS
 app.add_middleware(
@@ -93,20 +110,7 @@ class WorkflowRunStatus(BaseModel):
 connected_clients: List[WebSocket] = []
 applet_registry: Dict[str, Type['BaseApplet']] = {}
 
-# Database initialization
-@app.on_event("startup")
-async def startup_event():
-    """Initialize the database on application startup."""
-    logger.info("Initializing database...")
-    await init_db()
-    logger.info("Database initialization complete")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close database connections on application shutdown."""
-    logger.info("Closing database connections...")
-    await close_db_connections()
-    logger.info("Database connections closed")
+# Database initialization is now handled by the lifespan context manager
 
 # WebSocket connection manager
 async def broadcast_status(status: Dict[str, Any]):
@@ -166,12 +170,12 @@ class BaseApplet:
         """Process an incoming message and return a response."""
         raise NotImplementedError("Applets must implement on_message")
 
-def status_to_dict(s):
+def model_to_dict(model):
     """Convert a Pydantic model to a dictionary, handling both v1 and v2 Pydantic."""
-    if isinstance(s, dict):
-        return s
+    if isinstance(model, dict):
+        return model
     # Handle both Pydantic v1 (dict) and v2 (model_dump)
-    return s.model_dump() if hasattr(s, 'model_dump') else s.dict()
+    return model.model_dump() if hasattr(model, 'model_dump') else model.dict()
 
 # Orchestrator Core
 class Orchestrator:
@@ -217,22 +221,22 @@ class Orchestrator:
         )
         
         # Convert status to dictionary
-        status_dict = status.model_dump() if hasattr(status, 'model_dump') else status.dict()
+        status_dict = model_to_dict(status)
         
-        # Save workflow run status to database
+        # Initialize repository and save initial status
         workflow_run_repo = WorkflowRunRepository()
+        logger.info(f"Starting workflow execution with run ID: {run_id}")
         await workflow_run_repo.save(status_dict)
         
         # Broadcast initial status
         await broadcast_status(status_dict)
         
         # Start execution in background task
-        asyncio.create_task(Orchestrator._execute_flow_async(run_id, flow, input_data))
+        asyncio.create_task(Orchestrator._execute_flow_async(run_id, flow, input_data, workflow_run_repo))
         
         return run_id
     @staticmethod
-    async def _execute_flow_async(run_id: str, flow: dict, input_data: Dict[str, Any]):
-        workflow_run_repo = WorkflowRunRepository()
+    async def _execute_flow_async(run_id: str, flow: dict, input_data: Dict[str, Any], workflow_run_repo: WorkflowRunRepository):
         status = await workflow_run_repo.get_by_run_id(run_id)
         
         # Create a mapping of node IDs to node data
@@ -385,7 +389,7 @@ async def list_applets():
 @app.post("/flows")
 async def create_flow(flow: Flow):
     """Create or update a flow."""
-    await FlowRepository.save(flow.dict())
+    await FlowRepository.save(model_to_dict(flow))
     return {"message": "Flow created", "id": flow.id}
 
 @app.get("/flows")
