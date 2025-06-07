@@ -94,18 +94,27 @@
 
 .run-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   margin-bottom: 8px;
 }
 
 .flow-name {
-  font-weight: 500;
-  font-size: 0.9rem;
+  font-weight: 600;
+  font-size: 0.95rem;
   color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.flow-id {
+  font-size: 0.75rem;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6px;
 }
 
 .status-badge {
@@ -114,6 +123,7 @@
   border-radius: 10px;
   font-size: 0.7rem;
   text-transform: capitalize;
+  align-self: flex-start;
 }
 
 .status-badge.success {

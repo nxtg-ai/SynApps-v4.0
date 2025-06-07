@@ -18,14 +18,42 @@ const HistoryPage: React.FC = () => {
   const [runs, setRuns] = useState<WorkflowRunStatus[]>([]);
   const [selectedRun, setSelectedRun] = useState<WorkflowRunStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [flowNames, setFlowNames] = useState<Record<string, string>>({});
   
-  // Load workflow runs
+  // Load workflow runs and flow details
   useEffect(() => {
     const loadRuns = async () => {
       setIsLoading(true);
       try {
         const runsData = await apiService.getRuns();
         setRuns(runsData);
+        
+        // Fetch flow details to get names
+        const flowIdsMap: Record<string, boolean> = {};
+        const uniqueFlowIds: string[] = [];
+        
+        // Get unique flow IDs without using Set spread operator
+        runsData.forEach(run => {
+          if (!flowIdsMap[run.flow_id]) {
+            flowIdsMap[run.flow_id] = true;
+            uniqueFlowIds.push(run.flow_id);
+          }
+        });
+        
+        const flowNamesMap: Record<string, string> = {};
+        
+        // Fetch flow details in parallel
+        await Promise.all(uniqueFlowIds.map(async (flowId) => {
+          try {
+            const flowData = await apiService.getFlow(flowId);
+            flowNamesMap[flowId] = flowData.name || `Flow ${flowId}`;
+          } catch (error) {
+            console.error(`Error loading flow ${flowId}:`, error);
+            flowNamesMap[flowId] = `Flow ${flowId}`;
+          }
+        }));
+        
+        setFlowNames(flowNamesMap);
         
         // If run ID is provided in URL, select that run
         if (runIdParam) {
@@ -107,7 +135,8 @@ const HistoryPage: React.FC = () => {
                     }}
                   >
                     <div className="run-header">
-                      <span className="flow-name">{run.flow_id}</span>
+                      <span className="flow-name">{flowNames[run.flow_id] || 'Loading...'}</span>
+                      <span className="flow-id">ID: {run.flow_id}</span>
                       <span className={`status-badge ${run.status}`}>
                         {run.status}
                       </span>
@@ -136,7 +165,11 @@ const HistoryPage: React.FC = () => {
                       <span className="detail-value">{selectedRun.run_id}</span>
                     </div>
                     <div className="detail-item">
-                      <span className="detail-label">Flow</span>
+                      <span className="detail-label">Flow Name</span>
+                      <span className="detail-value">{flowNames[selectedRun.flow_id] || 'Unknown'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Flow ID</span>
                       <span className="detail-value">{selectedRun.flow_id}</span>
                     </div>
                     <div className="detail-item">
