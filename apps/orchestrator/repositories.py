@@ -3,10 +3,7 @@ Repository classes for database operations.
 
 This module provides repository classes that handle database operations for the various models.
 """
-import os
 from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 import logging
 import uuid
 import time
@@ -14,40 +11,18 @@ from models import Flow, FlowNode, FlowEdge, WorkflowRun
 from sqlalchemy import delete
 from sqlalchemy.orm import selectinload
 from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
-from contextlib import asynccontextmanager
-from models import Flow, FlowNode, FlowEdge, WorkflowRun
+from sqlalchemy.ext.asyncio import AsyncSession
+from db import get_db_session
 
+# Configure logging
 logger = logging.getLogger("repositories")
-
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///synapps.db")
-engine = create_async_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
-    pool_pre_ping=True
-)
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False)
-
-@asynccontextmanager
-async def get_async_session():
-    session = async_session()
-    try:
-        yield session
-        await session.commit()
-    except Exception as e:
-        await session.rollback()
-        logger.error(f"Database session error: {e}")
-        raise
-    finally:
-        await session.close()
 
 class FlowRepository:
     """Async repository for Flow operations."""
     @staticmethod
     async def save(flow_data: Dict[str, Any]) -> Dict[str, Any]:
         flow_id = flow_data.get("id") or str(uuid.uuid4())
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             # Check if flow exists
             result = await session.execute(select(Flow).where(Flow.id == flow_id))
             flow = result.scalars().first()
@@ -92,7 +67,7 @@ class FlowRepository:
             return complete_flow.to_dict()
     @staticmethod
     async def get_by_id(flow_id: str) -> Optional[Dict[str, Any]]:
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             result = await session.execute(
                 select(Flow)
                 .options(selectinload(Flow.nodes), selectinload(Flow.edges))
@@ -103,7 +78,7 @@ class FlowRepository:
 
     @staticmethod
     async def get_all() -> List[Dict[str, Any]]:
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             result = await session.execute(
                 select(Flow).options(selectinload(Flow.nodes), selectinload(Flow.edges))
             )
@@ -112,7 +87,7 @@ class FlowRepository:
 
     @staticmethod
     async def delete(flow_id: str) -> bool:
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             result = await session.execute(select(Flow).where(Flow.id == flow_id))
             flow = result.scalars().first()
             if not flow:
@@ -126,7 +101,7 @@ class WorkflowRunRepository:
     @staticmethod
     async def save(run_data: Dict[str, Any]) -> Dict[str, Any]:
         run_id = run_data.get("run_id") or str(uuid.uuid4())
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             result = await session.execute(select(WorkflowRun).where(WorkflowRun.id == run_id))
             run = result.scalars().first()
             if run:
@@ -152,13 +127,13 @@ class WorkflowRunRepository:
             return run.to_dict()
     @staticmethod
     async def get_by_run_id(run_id: str) -> Optional[Dict[str, Any]]:
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             result = await session.execute(select(WorkflowRun).where(WorkflowRun.id == run_id))
             run = result.scalars().first()
             return run.to_dict() if run else None
     @staticmethod
     async def get_all() -> List[Dict[str, Any]]:
-        async with get_async_session() as session:
+        async with get_db_session() as session:
             result = await session.execute(select(WorkflowRun))
             runs = result.scalars().all()
             return [run.to_dict() for run in runs]
