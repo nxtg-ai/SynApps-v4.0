@@ -19,6 +19,7 @@ const HistoryPage: React.FC = () => {
   const [selectedRun, setSelectedRun] = useState<WorkflowRunStatus | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [flowNames, setFlowNames] = useState<Record<string, string>>({});
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc'); // Default to newest first
   
   // Load workflow runs and flow details
   useEffect(() => {
@@ -26,7 +27,12 @@ const HistoryPage: React.FC = () => {
       setIsLoading(true);
       try {
         const runsData = await apiService.getRuns();
-        setRuns(runsData);
+        
+        // Sort runs by start_time based on current sort order
+        const sortedRuns = [...runsData].sort((a, b) => 
+          sortOrder === 'desc' ? b.start_time - a.start_time : a.start_time - b.start_time
+        );
+        setRuns(sortedRuns);
         
         // Fetch flow details to get names
         const flowIdsMap: Record<string, boolean> = {};
@@ -81,7 +87,7 @@ const HistoryPage: React.FC = () => {
     };
     
     loadRuns();
-  }, [runIdParam]);
+  }, [runIdParam, sortOrder]);
   
   // Format date for display
   const formatDate = (timestamp: number) => {
@@ -122,7 +128,16 @@ const HistoryPage: React.FC = () => {
         ) : (
           <div className="history-container">
             <div className="runs-sidebar">
-              <h3>Recent Runs</h3>
+              <div className="runs-header">
+                <h3>Recent Runs</h3>
+                <button 
+                  className="sort-toggle" 
+                  onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                  title={sortOrder === 'desc' ? 'Currently: Newest first' : 'Currently: Oldest first'}
+                >
+                  {sortOrder === 'desc' ? '↓ Newest first' : '↑ Oldest first'}
+                </button>
+              </div>
               <div className="runs-list">
                 {runs.map(run => (
                   <div 
