@@ -32,6 +32,7 @@ This document outlines the prioritized action items for the SynApps v4.0 codebas
 - [ ] Add input validation for all API endpoints
 - [ ] Configure CORS properly for production
 - [ ] Add rate limiting for API endpoints
+- [ ] Ensure all required dependencies are explicitly listed in requirements.txt
 
 ## P1: High Priority (Next 4 Weeks)
 
@@ -41,6 +42,7 @@ This document outlines the prioritized action items for the SynApps v4.0 codebas
 - [ ] Refactor hard-coded API versions (e.g., "gpt-4.1", "dall-e-3-3")
 - [ ] Fix the node positioning issue in workflow editor (currently fixed at 100,100)
 - [x] Resolve infinite update loop in workflow editor
+- [x] Fix duplicate database connection code in repositories.py
 
 ### Testing Framework
 - [ ] Implement **unit tests** for orchestrator components
@@ -56,6 +58,12 @@ This document outlines the prioritized action items for the SynApps v4.0 codebas
 - [ ] Implement collapsible panels for better space management
 
 ## P2: Medium Priority (Next Quarter)
+
+### Documentation
+- [x] Create detailed architecture documentation
+- [x] Document request flow with sequence diagrams
+- [ ] Add API documentation with examples
+- [ ] Create user guides and tutorials
 
 ### Authentication & Authorization
 - [ ] Implement user authentication system
@@ -125,7 +133,7 @@ This document outlines the prioritized action items for the SynApps v4.0 codebas
 
 ## Next Steps (June 6, 2025)
 
-Based on our recent progress implementing database persistence and fixing workflow execution issues, here are the recommended next focus areas:
+Based on our recent progress implementing database persistence, fixing workflow execution issues, and improving code quality, here are the recommended next focus areas:
 
 ### Immediate Focus (Next Week)
 1. **FastAPI Modernization**
@@ -151,4 +159,4 @@ Based on our recent progress implementing database persistence and fixing workfl
 
 *This document should be updated weekly during sprint planning to reflect progress and changing priorities.*
 
-*Last updated: June 6, 2025*
+*Last updated: June 6, 2025 (18:38)*
