@@ -137,8 +137,8 @@ Based on our recent progress implementing database persistence, fixing workflow 
 
 ### Immediate Focus (Next Week)
 1. **FastAPI Modernization**
-   - Replace deprecated `on_event` handlers with modern lifespan events
-   - Update Pydantic model usage to be compatible with both v1 and v2 (replace `.dict()` with `.model_dump()` where appropriate)
+   - [x] Replace deprecated `on_event` handlers with lifespan events
+   - [x] Update Pydantic model usage to be compatible with both v1 and v2 (`.dict()` to `.model_dump()`) where appropriate)
 
 2. **Error Handling Improvements**
    - Implement retry mechanisms for external API calls (OpenAI, Stability)
@@ -159,4 +159,4 @@ Based on our recent progress implementing database persistence, fixing workflow 
 
 *This document should be updated weekly during sprint planning to reflect progress and changing priorities.*
 
-*Last updated: June 6, 2025 (18:38)*
+*Last updated: June 6, 2025 (19:25)*
