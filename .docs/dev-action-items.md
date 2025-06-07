@@ -56,6 +56,7 @@ This document outlines the prioritized action items for the SynApps v4.0 codebas
 - [ ] Improve drag-and-drop functionality
 - [ ] Add progress indicators during long-running workflows
 - [ ] Implement collapsible panels for better space management
+- [x] Improve Run History page to display workflow names and add sorting options
 
 ## P2: Medium Priority (Next Quarter)
 
@@ -159,4 +160,4 @@ Based on our recent progress implementing database persistence, fixing workflow 
 
 *This document should be updated weekly during sprint planning to reflect progress and changing priorities.*
 
-*Last updated: June 6, 2025 (19:25)*
+*Last updated: June 7, 2025 (15:10)*

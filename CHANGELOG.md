@@ -5,6 +5,24 @@ All notable changes to the SynApps project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-06-07
+
+### Added
+
+- **Enhanced Run History Page**
+  - Added workflow names to the Run History page for better identification
+  - Implemented sorting functionality with newest-first as default
+  - Added toggle button to switch between newest-first and oldest-first sorting
+  - Improved UI styling for better readability
+
+### Changed
+
+- **FastAPI Modernization**
+  - Replaced deprecated lifecycle event handlers (`@app.on_event`) with the modern lifespan context manager
+  - Created a helper function `model_to_dict` to abstract Pydantic model serialization differences
+  - Updated all Pydantic model dictionary conversions for compatibility with both v1 and v2
+  - Fixed dependency injection in the Orchestrator class
+
 ## [0.3.0] - 2025-06-06
 
 ### Added
