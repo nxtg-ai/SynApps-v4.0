@@ -132,6 +132,8 @@ Technologies:
    - Frontend updates the visual representation of the workflow
    - On completion, a notification is shown to the user
 
+For a detailed step-by-step view of how a request moves from the client to the database, see [request-flow.md](request-flow.md).
+
 ## Scalability Considerations
 
 ### Current Implementation (MVP)
