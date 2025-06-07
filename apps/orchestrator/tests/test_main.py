@@ -6,21 +6,26 @@ from fastapi.testclient import TestClient
 
 from main import app, Flow, AppletMessage
 
-client = TestClient(app)
 
-def test_read_root():
+@pytest.fixture
+def client():
+    """Create a TestClient that triggers lifespan events."""
+    with TestClient(app) as c:
+        yield c
+
+def test_read_root(client):
     """Test the root endpoint."""
     response = client.get("/")
     assert response.status_code == 200
     assert "SynApps Orchestrator API" in response.json()["message"]
 
-def test_list_applets():
+def test_list_applets(client):
     """Test listing applets."""
     response = client.get("/applets")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-def test_create_flow():
+def test_create_flow(client):
     """Test creating a flow."""
     flow = {
         "id": "test-flow",
@@ -63,13 +68,13 @@ def test_create_flow():
     assert response.status_code == 200
     assert response.json()["id"] == "test-flow"
 
-def test_list_flows():
+def test_list_flows(client):
     """Test listing flows."""
     response = client.get("/flows")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-def test_get_flow():
+def test_get_flow(client):
     """Test getting a flow."""
     # First create a flow
     flow = {
@@ -86,7 +91,7 @@ def test_get_flow():
     assert response.status_code == 200
     assert response.json()["id"] == "test-flow-2"
 
-def test_delete_flow():
+def test_delete_flow(client):
     """Test deleting a flow."""
     # First create a flow
     flow = {
