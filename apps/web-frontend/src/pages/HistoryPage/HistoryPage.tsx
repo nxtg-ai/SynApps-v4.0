@@ -20,6 +20,7 @@ const HistoryPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [flowNames, setFlowNames] = useState<Record<string, string>>({});
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc'); // Default to newest first
+  const [flowDetails, setFlowDetails] = useState<Record<string, any>>({});
   
   // Load workflow runs and flow details
   useEffect(() => {
@@ -47,12 +48,14 @@ const HistoryPage: React.FC = () => {
         });
         
         const flowNamesMap: Record<string, string> = {};
+        const flowDetailsMap: Record<string, any> = {};
         
         // Fetch flow details in parallel
         await Promise.all(uniqueFlowIds.map(async (flowId) => {
           try {
             const flowData = await apiService.getFlow(flowId);
             flowNamesMap[flowId] = flowData.name || `Flow ${flowId}`;
+            flowDetailsMap[flowId] = flowData;
           } catch (error) {
             console.error(`Error loading flow ${flowId}:`, error);
             flowNamesMap[flowId] = `Flow ${flowId}`;
@@ -60,6 +63,7 @@ const HistoryPage: React.FC = () => {
         }));
         
         setFlowNames(flowNamesMap);
+        setFlowDetails(flowDetailsMap);
         
         // If run ID is provided in URL, select that run
         if (runIdParam) {
@@ -75,9 +79,9 @@ const HistoryPage: React.FC = () => {
               console.error('Error loading specific run:', error);
             }
           }
-        } else if (runsData.length > 0) {
-          // Select the most recent run
-          setSelectedRun(runsData[0]);
+        } else if (sortedRuns.length > 0) {
+          // Select the most recent run (first item in the sorted runs when sorting by desc)
+          setSelectedRun(sortedRuns[0]);
         }
       } catch (error) {
         console.error('Error loading runs:', error);
@@ -220,37 +224,231 @@ const HistoryPage: React.FC = () => {
                   
                   <h3>Results</h3>
                   <div className="results-panel">
-                    {Object.keys(selectedRun.results).length > 0 ? (
+                    {selectedRun && flowDetails[selectedRun.flow_id] ? (
                       <div className="results-tree">
-                        {Object.entries(selectedRun.results).map(([nodeId, result]) => {
-                          const nodeResult = result as { type: string; output: any };
-                          return (
-                            <div key={nodeId} className="result-node">
-                              <div className="result-header">
-                                <span className="node-type">{nodeResult.type}</span>
-                                <span className="node-id">{nodeId}</span>
-                              </div>
-                              <div className="result-output">
-                                {typeof nodeResult.output === 'string' ? (
-                                  <div className="text-output">{nodeResult.output}</div>
-                                ) : nodeResult.output && nodeResult.output.image ? (
-                                  <div className="image-output">
-                                    <img 
-                                      src={`data:image/png;base64,${nodeResult.output.image}`} 
-                                      alt="Generated output" 
-                                    />
+                        {(() => {
+                          const flow = flowDetails[selectedRun.flow_id];
+                          const allNodes = flow.nodes || [];
+                          const results = selectedRun.results || {};
+                          
+                          // Create a map of node IDs to their positions in the flow
+                          const nodePositions: Record<string, number> = {};
+                          allNodes.forEach((node: any, index: number) => {
+                            nodePositions[node.id] = index;
+                          });
+                          
+                          // Define interfaces for our node data
+                          interface FlowNode {
+                            id: string;
+                            type: string;
+                            [key: string]: any;
+                          }
+                          
+                          interface DisplayNode {
+                            nodeId: string;
+                            nodeType: string;
+                            position: number;
+                            result: { type: string; output: any } | null;
+                          }
+                          
+                          // Create a complete list of nodes to display, including Start and End
+                          const displayNodes = allNodes.map((node: FlowNode) => {
+                            const nodeId = node.id;
+                            const nodeType = node.type;
+                            const isStartOrEnd = nodeType.toLowerCase() === 'start' || nodeType.toLowerCase() === 'end';
+                            const resultData = results[nodeId];
+                            
+                            return {
+                              nodeId,
+                              nodeType,
+                              position: nodePositions[nodeId],
+                              // If it's a Start or End node without result data, create a placeholder
+                              result: resultData || (isStartOrEnd ? { type: nodeType, output: isStartOrEnd ? {} : null } : null)
+                            } as DisplayNode;
+                          }).filter((item: DisplayNode) => item.result !== null);
+                          
+                          // Sort by position in the flow
+                          return displayNodes
+                            .sort((a: DisplayNode, b: DisplayNode) => a.position - b.position)
+                            .map((item: DisplayNode, index: number) => {
+                              const { nodeId, nodeType, result } = item;
+                              const stepNumber = index + 1;
+                              const nodeResult = result as { type: string; output: any };
+                              
+                              // Extract input prompt if available in the output
+                              let inputPrompt = '';
+                              if (nodeResult.output && typeof nodeResult.output === 'object') {
+                                if (nodeResult.output.prompt) {
+                                  inputPrompt = nodeResult.output.prompt;
+                                } else if (nodeResult.output.input) {
+                                  inputPrompt = typeof nodeResult.output.input === 'string' 
+                                    ? nodeResult.output.input 
+                                    : JSON.stringify(nodeResult.output.input);
+                                }
+                              }
+                              
+                              const isStartOrEnd = nodeType.toLowerCase() === 'start' || nodeType.toLowerCase() === 'end';
+                              
+                              return (
+                                <div key={nodeId} className={`result-node ${isStartOrEnd ? 'system-node' : ''}`}>
+                                  <div className="result-header">
+                                    <span className="step-number">Step {stepNumber}</span>
+                                    <span className={`node-type ${isStartOrEnd ? 'system-node-type' : ''}`}>{nodeType}</span>
+                                    <span className="node-id">{nodeId}</span>
                                   </div>
-                                ) : (
-                                  <div className="json-output">
-                                    <pre>
-                                      {JSON.stringify(nodeResult.output, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                                  
+                                  {inputPrompt && (
+                                    <div className="prompt-section">
+                                      <div className="prompt-header">Input Prompt:</div>
+                                      <div className="prompt-content">{inputPrompt}</div>
+                                    </div>
+                                  )}
+                                  
+                                  {isStartOrEnd ? (
+                                    <div className="result-output system-node-output">
+                                      <div className="output-header">{nodeType.toLowerCase() === 'start' ? 'Workflow Input Data' : 'Final Workflow Context'}</div>
+                                      {nodeType.toLowerCase() === 'start' ? (
+                                        <div>
+                                          <div className="text-output">Initial workflow input data:</div>
+                                          <div className="json-output">
+                                            <pre>
+                                              {(() => {
+                                                // For Start node, show the initial input data from the workflow run
+                                                console.log('Selected run data:', selectedRun);
+                                                
+                                                // Try multiple sources for input data
+                                                let inputData = {};
+                                                
+                                                // Source 1: input_data field directly on the run
+                                                if (selectedRun.input_data && typeof selectedRun.input_data === 'object') {
+                                                  console.log('Found input_data in selectedRun:', selectedRun.input_data);
+                                                  inputData = selectedRun.input_data;
+                                                } 
+                                                // Source 2: Look for Start node in results that might have the input
+                                                else if (selectedRun.results) {
+                                                  // Find the Start node in the results
+                                                  const startNode = Object.entries(selectedRun.results)
+                                                    .find(([nodeId, result]: [string, any]) => {
+                                                      const node = flowDetails[selectedRun.flow_id]?.nodes?.find((n: any) => n.id === nodeId);
+                                                      return node && node.type.toLowerCase() === 'start';
+                                                    });
+                                                    
+                                                  if (startNode && startNode[1] && startNode[1].output) {
+                                                    console.log('Found Start node with output:', startNode[1].output);
+                                                    // Try to get input from the Start node output
+                                                    if (typeof startNode[1].output === 'object') {
+                                                      if (startNode[1].output.input) {
+                                                        inputData = startNode[1].output.input;
+                                                      } else if (startNode[1].output.context && startNode[1].output.context.input) {
+                                                        inputData = startNode[1].output.context.input;
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                                
+                                                // Source 3: Find any node with context information as a last resort
+                                                if (Object.keys(inputData).length === 0) {
+                                                  const firstNodeWithContext = Object.values(selectedRun.results || {})
+                                                    .find((result: any) => 
+                                                      result && 
+                                                      result.output && 
+                                                      typeof result.output === 'object' && 
+                                                      result.output.context && 
+                                                      result.output.context.input
+                                                    );
+                                                  
+                                                  if (firstNodeWithContext && firstNodeWithContext.output.context.input) {
+                                                    console.log('Found input in node context:', firstNodeWithContext.output.context.input);
+                                                    inputData = firstNodeWithContext.output.context.input;
+                                                  }
+                                                }
+                                                
+                                                // If we have a non-empty object, stringify it
+                                                if (Object.keys(inputData).length > 0) {
+                                                  return JSON.stringify(inputData, null, 2);
+                                                }
+                                                
+                                                // Default empty object
+                                                return JSON.stringify({}, null, 2);
+                                              })()}
+                                            </pre>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div>
+                                          <div className="text-output">Final workflow context:</div>
+                                          <div className="json-output">
+                                            <pre>
+                                              {(() => {
+                                                // For End node, show the final workflow context with all results
+                                                // First get all nodes with context
+                                                const allNodesWithContext = Object.entries(selectedRun.results || {})
+                                                  .filter(([_, result]: [string, any]) => 
+                                                    result && 
+                                                    result.output && 
+                                                    typeof result.output === 'object' && 
+                                                    result.output.context
+                                                  );
+                                                  
+                                                // If there are no nodes with context, show the entire results object
+                                                if (allNodesWithContext.length === 0) {
+                                                  return JSON.stringify(selectedRun.results || {}, null, 2);
+                                                }
+                                                
+                                                // Sort by node position to get the last node
+                                                const sortedNodes = [...allNodesWithContext].sort((a: [string, any], b: [string, any]) => {
+                                                  const nodeA = flowDetails[selectedRun.flow_id]?.nodes?.find((n: any) => n.id === a[0]);
+                                                  const nodeB = flowDetails[selectedRun.flow_id]?.nodes?.find((n: any) => n.id === b[0]);
+                                                  if (nodeA && nodeB) {
+                                                    // Sort by y position (higher y is later in the flow)
+                                                    if (nodeA.position.y !== nodeB.position.y) {
+                                                      return nodeB.position.y - nodeA.position.y; // Last node first
+                                                    }
+                                                    // If same y position, sort by x position
+                                                    return nodeB.position.x - nodeA.position.x;
+                                                  }
+                                                  return 0;
+                                                });
+
+                                                const lastNodeWithContext = sortedNodes.length > 0 ? sortedNodes[0] : null;
+
+                                                // Extract the final context if available
+                                                const finalContext = lastNodeWithContext ? 
+                                                  lastNodeWithContext[1].output.context : 
+                                                  { results: {} };
+
+                                                return JSON.stringify(finalContext, null, 2);
+                                              })()}
+                                            </pre>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="result-output">
+                                      <div className="output-header">Output:</div>
+                                      {typeof nodeResult.output === 'string' ? (
+                                        <div className="text-output">{nodeResult.output}</div>
+                                      ) : nodeResult.output && nodeResult.output.image ? (
+                                        <div className="image-output">
+                                          <img 
+                                            src={`data:image/png;base64,${nodeResult.output.image}`} 
+                                            alt="Generated output" 
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="json-output">
+                                          <pre>
+                                            {JSON.stringify(nodeResult.output, null, 2)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            });
+                        })()}
                       </div>
                     ) : (
                       <div className="no-results">

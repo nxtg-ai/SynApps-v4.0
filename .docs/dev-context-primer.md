@@ -1,6 +1,6 @@
 # SynApps v4.0 Development Context Primer
 
-This document captures the development context, issues fixed, and guidance for the SynApps v4.0 project as of June 6, 2025.
+This document captures the development context, issues fixed, and guidance for the SynApps v4.0 project as of June 8, 2025.
 
 ## Project Overview
 
@@ -197,24 +197,33 @@ DATABASE_URL=sqlite+aiosqlite:///synapps.db
    - Improved error handling during applet execution
    - Added proper async/await patterns for database operations
    - Fixed applet loading mechanism
+   - Enhanced orchestrator to handle node-specific configuration data
+   - Updated flow execution to use Start node input data and node-specific settings
 
 3. **API Improvements**:
    - Enhanced WebSocket broadcasting for real-time updates
    - Added proper error responses for API endpoints
    - Improved status tracking and reporting
+   - Implemented workflow node completion tracking via completed_applets column
 
 ### UI Enhancements
 
-1. **Reorganized Output Display**:
+1. **Node-Specific Configuration**:
+   - Implemented modular `NodeConfig` component for node-specific input configuration
+   - Added configuration panels for Start, Writer, and Artist nodes
+   - Created toggle button (gear icon) to open/close configuration panels
+   - Removed global Input Data Panel in favor of node-specific configurations
+   - Styled configuration panels with consistent design per node type
+
+2. **Reorganized Output Display**:
    - Created a structured, section-based layout for workflow results
    - Separated output into three distinct panels: Text Output, Raw Results, and Image Results
    - Added clear section headers and consistent styling
    - Implemented collapsible sections for better space management
 
-2. **Image Generator Selection**:
-   - Added a dropdown selector to choose between different image generation services
+3. **Image Generator Selection**:
+   - Moved image generator selection to Artist node configuration
    - Implemented support for both Stability.ai and DALL-E 3
-   - Passed the selected generator to the backend via the workflow context
    - Added descriptive labels to explain the strengths of each option
 
 3. **Advanced Image Rendering**:
@@ -228,6 +237,7 @@ DATABASE_URL=sqlite+aiosqlite:///synapps.db
    - Added helpful debug information directly in the UI
    - Enhanced console logging for troubleshooting
    - Created a more user-friendly loading indicator during workflow execution
+   - Implemented dynamic node status indicators showing execution progress in real-time
 
 ## Known Issues
 

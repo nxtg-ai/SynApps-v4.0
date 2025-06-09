@@ -119,9 +119,14 @@ async def broadcast_status(status: Dict[str, Any]):
         logger.warning("No connected clients to broadcast to")
         return
     
+    # Ensure completed_applets is included in the broadcast even if not in the database
+    broadcast_data = status.copy()
+    if "completed_applets" not in broadcast_data:
+        broadcast_data["completed_applets"] = []
+    
     message = {
         "type": "workflow.status",
-        "data": status
+        "data": broadcast_data
     }
     
     for client in connected_clients:
@@ -212,15 +217,21 @@ class Orchestrator:
         run_id = Orchestrator.create_run_id()
         
         # Create workflow run status
-        status = WorkflowRunStatus(
-            run_id=run_id,
-            flow_id=flow["id"],
-            status="running",
-            start_time=time.time(),
-            total_steps=len(flow["nodes"])
-        )
+        status = {
+            "run_id": run_id,
+            "flow_id": flow["id"],
+            "status": "running",
+            "current_applet": None,
+            "progress": 0,
+            "total_steps": len(flow["nodes"]),
+            "start_time": time.time(),
+            "results": {},
+            "input_data": input_data
+        }
         
-        # Convert status to dictionary
+        # Track completed nodes in memory even if database doesn't have the column yet
+        memory_completed_applets = []
+        
         status_dict = model_to_dict(status)
         
         # Initialize repository and save initial status
@@ -228,16 +239,24 @@ class Orchestrator:
         logger.info(f"Starting workflow execution with run ID: {run_id}")
         await workflow_run_repo.save(status_dict)
         
+        # Add completed_applets to the status for WebSocket broadcast
+        broadcast_status_dict = status_dict.copy()
+        broadcast_status_dict["completed_applets"] = []
+        
         # Broadcast initial status
-        await broadcast_status(status_dict)
+        await broadcast_status(broadcast_status_dict)
         
         # Start execution in background task
-        asyncio.create_task(Orchestrator._execute_flow_async(run_id, flow, input_data, workflow_run_repo))
+        asyncio.create_task(Orchestrator._execute_flow_async(run_id, flow, input_data, workflow_run_repo, broadcast_status))
         
         return run_id
     @staticmethod
-    async def _execute_flow_async(run_id: str, flow: dict, input_data: Dict[str, Any], workflow_run_repo: WorkflowRunRepository):
+    async def _execute_flow_async(run_id: str, flow: dict, input_data: Dict[str, Any], workflow_run_repo: WorkflowRunRepository, broadcast_status_fn):
+        
         status = await workflow_run_repo.get_by_run_id(run_id)
+        
+        # Track completed nodes in memory
+        memory_completed_applets = []
         
         # Create a mapping of node IDs to node data
         nodes_by_id = {node["id"]: node for node in flow["nodes"]}
@@ -258,7 +277,11 @@ class Orchestrator:
             status["error"] = "No start node found in flow"
             status["end_time"] = time.time()
             await workflow_run_repo.save(status)
-            await broadcast_status(status)
+            
+            # Create a copy of status for broadcasting
+            broadcast_data = status.copy()
+            broadcast_data["completed_applets"] = memory_completed_applets
+            await broadcast_status_fn(broadcast_data)
             return
         
         # Initialize context with input data
@@ -267,6 +290,9 @@ class Orchestrator:
             "results": {},
             "run_id": run_id
         }
+        
+        # Make sure input_data is saved in the status
+        status["input_data"] = input_data
         
         # Process the graph starting from start nodes
         current_nodes = start_nodes
@@ -286,11 +312,38 @@ class Orchestrator:
                     # Update status
                     status["current_applet"] = node["type"]
                     status["progress"] += 1
+                    
+                    # Add to completed nodes in memory
+                    if node_id not in memory_completed_applets:
+                        memory_completed_applets.append(node_id)
+                    
+                    # Create a copy for broadcasting
+                    broadcast_data = status.copy()
+                    broadcast_data["completed_applets"] = memory_completed_applets
+                    
                     await workflow_run_repo.save(status)
-                    await broadcast_status(status)
+                    await broadcast_status_fn(broadcast_data)
                     
                     # Skip if not an applet node
                     if node["type"].lower() in ["start", "end"]:
+                        # Handle start node with input data from configuration
+                        if node["type"].lower() == "start" and "data" in node and "parsedInputData" in node["data"]:
+                            # Use the parsed input data from the node configuration
+                            parsed_input = node["data"]["parsedInputData"]
+                            if parsed_input and isinstance(parsed_input, dict):
+                                # Update the context with the parsed input data
+                                context["input"] = parsed_input
+                                # Also update the status input_data
+                                status["input_data"] = parsed_input
+                        
+                        # Track completed nodes in memory
+                        memory_completed_applets.append(node_id)
+                        
+                        # Create a copy of status for broadcasting
+                        broadcast_status = status.copy()
+                        broadcast_status["completed_applets"] = memory_completed_applets
+                        
+                        # Continue to next nodes
                         if node_id in graph:
                             next_nodes.extend(graph[node_id])
                         continue
@@ -299,14 +352,30 @@ class Orchestrator:
                     try:
                         applet = await Orchestrator.load_applet(node["type"].lower())
                         
-                        # Create message
+                        # Create message with node-specific configuration
+                        message_content = input_data
+                        message_metadata = {"node_id": node_id, "run_id": run_id}
+                        
+                        # Add node-specific configuration to metadata
+                        if "data" in node:
+                            # For Writer node, add system prompt
+                            if node["type"].lower() == "writer" and "systemPrompt" in node["data"]:
+                                message_metadata["system_prompt"] = node["data"]["systemPrompt"]
+                            
+                            # For Artist node, add system prompt and generator
+                            if node["type"].lower() == "artist":
+                                if "systemPrompt" in node["data"]:
+                                    message_metadata["system_prompt"] = node["data"]["systemPrompt"]
+                                if "generator" in node["data"]:
+                                    message_metadata["generator"] = node["data"]["generator"]
+                        
                         message = AppletMessage(
-                            content=input_data,
+                            content=message_content,
                             context=context,
-                            metadata={"node_id": node_id, "run_id": run_id}
+                            metadata=message_metadata
                         )
                         
-                        # Process message
+                        # Execute applet
                         response = await applet.on_message(message)
                         
                         # Store result in context
@@ -317,6 +386,13 @@ class Orchestrator:
                         
                         # Update context with any changes from applet
                         context.update(response.context)
+                        
+                        # Track completed nodes in memory
+                        memory_completed_applets.append(node_id)
+                        
+                        # Create a copy of status for broadcasting
+                        broadcast_status = status.copy()
+                        broadcast_status["completed_applets"] = memory_completed_applets
                         
                         # Add next nodes
                         if node_id in graph:
@@ -333,7 +409,11 @@ class Orchestrator:
                         status["error"] = f"Error in applet '{node['type']}': {str(e)}"
                         status["end_time"] = time.time()
                         await workflow_run_repo.save(status)
-                        await broadcast_status(status)
+                        
+                        # Create a copy of status for broadcasting
+                        broadcast_status = status.copy()
+                        broadcast_status["completed_applets"] = memory_completed_applets
+                        await broadcast_status(broadcast_status)
                         return
                 
                 current_nodes = next_nodes
@@ -342,8 +422,15 @@ class Orchestrator:
             status["status"] = "success"
             status["end_time"] = time.time()
             status["results"] = context["results"]
+            # Ensure input_data is preserved
+            if "input_data" not in status or not status["input_data"]:
+                status["input_data"] = input_data
             await workflow_run_repo.save(status)
-            await broadcast_status(status)
+            
+            # Create a copy of status for broadcasting
+            broadcast_data = status.copy()
+            broadcast_data["completed_applets"] = memory_completed_applets
+            await broadcast_status_fn(broadcast_data)
             
         except Exception as e:
             logger.error(f"Error executing workflow: {e}")
@@ -351,7 +438,11 @@ class Orchestrator:
             status["error"] = f"Workflow execution error: {str(e)}"
             status["end_time"] = time.time()
             await workflow_run_repo.save(status)
-            await broadcast_status(status)
+            
+            # Create a copy of status for broadcasting
+            broadcast_data = status.copy()
+            broadcast_data["completed_applets"] = memory_completed_applets
+            await broadcast_status_fn(broadcast_data)
 
 # API Routes
 @app.get("/")

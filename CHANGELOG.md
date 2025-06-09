@@ -5,6 +5,48 @@ All notable changes to the SynApps project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2025-06-09
+
+### Fixed
+
+- **Workflow History Page**
+  - Fixed run selection to show the latest workflow run by default instead of the oldest run
+  - Ensured proper sorting of workflow runs by timestamp
+
+## [0.5.0] - 2025-06-08
+
+### Added
+
+- **Node-Specific Configuration**
+  - Implemented `NodeConfig` component for node-specific input configuration
+  - Added configuration panels for Start, Writer, and Artist nodes:
+    - **Start Node**: Input text area for initial workflow input data with JSON parsing
+    - **Writer Node**: System prompt text area for configuring language model prompts
+    - **Artist Node**: System prompt text area and generator selection dropdown
+  - Added gear icon toggle button to open/close node configuration panels
+
+- **Dynamic Workflow Execution Feedback**
+  - Added status indicators (colored dots) in the upper-right corner of each node
+  - Implemented progressive lighting of status indicators as workflow steps complete
+  - Added visual feedback for running, success, and error states with appropriate colors
+  - Enhanced node border styling to reflect execution status
+  - Added backend tracking of completed workflow nodes via database
+  - Implemented real-time WebSocket broadcasting of node completion status
+
+### Changed
+
+- **Workflow Editor UI**
+  - Removed global Input Data Panel in favor of node-specific configurations
+  - Updated CSS styling for better layout and consistency
+  
+- **Orchestrator Backend**
+  - Enhanced `_execute_flow_async` to handle node-specific configuration data
+  - Updated flow execution to use Start node's input data configuration
+  - Added support for passing node-specific metadata (system prompts, generator selection) to applets
+  - Added tracking of completed nodes during workflow execution
+  - Created database migration for storing completed nodes in workflow runs
+  - Enhanced WebSocket status updates to include completed nodes information
+
 ## [0.4.0] - 2025-06-07
 
 ### Added

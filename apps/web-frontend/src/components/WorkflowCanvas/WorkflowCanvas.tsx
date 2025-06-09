@@ -12,8 +12,6 @@ import ReactFlow, {
   Connection,
   Edge,
   Node,
-  NodeChange,
-  EdgeChange,
   applyNodeChanges,
   applyEdgeChanges,
   OnConnect,
@@ -55,6 +53,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [runStatus, setRunStatus] = useState<WorkflowRunStatus | null>(null);
+  const [completedNodes, setCompletedNodes] = useState<string[]>([]);
   
   // Reference to the anime.js timeline
   const animationRef = useRef<anime.AnimeTimelineInstance | null>(null);
@@ -90,7 +89,11 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       position: node.position,
       data: {
         ...node.data,
-        label: node.data.label || node.type
+        label: node.data.label || node.type,
+        // Initialize node-specific configuration data if not present
+        ...(node.type === 'start' && !node.data.inputData && { inputData: '', parsedInputData: {} }),
+        ...(node.type === 'writer' && !node.data.systemPrompt && { systemPrompt: '' }),
+        ...(node.type === 'artist' && !node.data.systemPrompt && { systemPrompt: '', generator: 'dall-e' })
       }
     }));
     
@@ -115,7 +118,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       setNodes((nds) => {
         const newNodes = applyNodeChanges(changes, nds);
         
-        // Update the flow with the new node positions
+        // Update the flow with the new node positions and data
         const updatedFlow = {
           ...flow,
           nodes: flow.nodes.map(node => {
@@ -123,7 +126,11 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
             if (updatedNode) {
               return {
                 ...node,
-                position: updatedNode.position
+                position: updatedNode.position,
+                data: {
+                  ...node.data,
+                  ...updatedNode.data
+                }
               };
             }
             return node;
@@ -194,7 +201,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
     },
     [flow, onFlowChange, readonly]
   );
-  
+
   // Subscribe to workflow status updates
   useEffect(() => {
     const unsubscribe = webSocketService.subscribe('workflow.status', (status: WorkflowRunStatus) => {
@@ -202,45 +209,57 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       if (status.flow_id === flow.id) {
         setRunStatus(status);
         
-        // Update node statuses
-        const updatedNodes = nodes.map(node => {
-          // If this is the current node in the workflow, mark as running
-          if (node.id === status.current_applet) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                status: 'running'
-              }
-            };
-          }
+        // Keep track of completed nodes
+        if (status.completed_applets && Array.isArray(status.completed_applets)) {
+          setCompletedNodes(status.completed_applets);
+        } else if (status.current_applet && status.status !== 'error') {
+          // If completed_applets is not provided, infer from current_applet
+          // Find the index of current node in the workflow
+          const nodeIndex = flow.nodes.findIndex(node => node.id === status.current_applet);
           
-          // If workflow completed, mark all nodes as done
-          if (status.status === 'success') {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                status: 'success'
-              }
-            };
+          if (nodeIndex > 0) {
+            // Mark all nodes before the current one as completed
+            const previousNodeIds = flow.nodes
+              .slice(0, nodeIndex)
+              .map(node => node.id);
+            setCompletedNodes(previousNodeIds);
           }
-          
-          // If error, mark current node as error
-          if (status.status === 'error' && node.id === status.current_applet) {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                status: 'error'
-              }
-            };
-          }
-          
-          return node;
-        });
+        }
         
-        setNodes(updatedNodes);
+        // Update node statuses
+        setNodes(prevNodes => {
+          return prevNodes.map(node => {
+            // Current node is running
+            if (node.id === status.current_applet) {
+              return {
+                ...node,
+                data: { ...node.data, status: 'running' }
+              };
+            }
+            
+            // Node is already completed
+            if (status.completed_applets && status.completed_applets.includes(node.id)) {
+              return {
+                ...node,
+                data: { ...node.data, status: 'success' }
+              };
+            }
+            
+            // Error state
+            if (status.status === 'error' && node.id === status.current_applet) {
+              return {
+                ...node,
+                data: { ...node.data, status: 'error' }
+              };
+            }
+            
+            // Default state
+            return {
+              ...node,
+              data: { ...node.data, status: node.data.status || 'idle' }
+            };
+          });
+        });
         
         // Update edge animations
         const updatedEdges = edges.map(edge => {
@@ -268,7 +287,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
     return () => {
       unsubscribe();
     };
-  }, [flow.id, nodes, edges]);
+  }, [flow.id, nodes, edges, completedNodes, flow.nodes]);
   
   // Animation function
   const animateWorkflow = (status: WorkflowRunStatus) => {
@@ -321,12 +340,6 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
         });
         
         const newNodeId = generateId();
-        const newNode = {
-          id: newNodeId,
-          type: data.type,
-          position,
-          data: { ...data.data, status: 'idle' },
-        };
         
         // Update the flow with the new node
         const updatedFlow = {
@@ -335,7 +348,10 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
             id: newNodeId,
             type: data.type,
             position,
-            data: { label: data.data.label }
+            data: { 
+              label: data.data.label,
+              status: 'idle'
+            }
           }]
         };
         

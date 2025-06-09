@@ -54,9 +54,11 @@ This document outlines the prioritized action items for the SynApps v4.0 codebas
 - [ ] Fix image result rendering issues
 - [ ] Enhance workflow canvas with better node positioning
 - [ ] Improve drag-and-drop functionality
-- [ ] Add progress indicators during long-running workflows
-- [ ] Implement collapsible panels for better space management
+- [x] Add progress indicators during long-running workflows
+- [x] Implement node-specific input configuration for Start, Writer, and Artist nodes
+- [x] Implement collapsible panels for better space management
 - [x] Improve Run History page to display workflow names and add sorting options
+- [x] Add dynamic visual feedback for workflow execution with node status indicators
 
 ## P2: Medium Priority (Next Quarter)
 
@@ -154,10 +156,10 @@ Based on our recent progress implementing database persistence, fixing workflow 
 ### Testing Priority
 - Implement unit tests for the orchestrator components, particularly focusing on workflow execution
 - Create integration tests for the database repositories
-- Test the WebSocket connections and status broadcasting
+- [x] Test the WebSocket connections and status broadcasting
 
 ---
 
 *This document should be updated weekly during sprint planning to reflect progress and changing priorities.*
 
-*Last updated: June 7, 2025 (15:10)*
+*Last updated: June 8, 2025 (13:07)*
