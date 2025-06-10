@@ -2,7 +2,7 @@
  * WorkflowCanvas component
  * Visual editor for creating and visualizing AI workflows
  */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, KeyboardEvent } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -17,7 +17,8 @@ import ReactFlow, {
   OnConnect,
   OnEdgesChange,
   OnNodesChange,
-  ConnectionLineType
+  ConnectionLineType,
+  NodeRemoveChange
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import anime from 'animejs';
@@ -32,6 +33,8 @@ import EndNode from './nodes/EndNode';
 
 // Handlers for workflow execution
 import webSocketService from '../../services/WebSocketService';
+import NodeContextMenu from './NodeContextMenu';
+import './NodeContextMenu.css';
 
 interface WorkflowCanvasProps {
   flow: Flow;
@@ -54,6 +57,14 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
   const [edges, setEdges] = useState<Edge[]>([]);
   const [runStatus, setRunStatus] = useState<WorkflowRunStatus | null>(null);
   const [completedNodes, setCompletedNodes] = useState<string[]>([]);
+  
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    nodeId: string | null;
+  }>({ visible: false, x: 0, y: 0, nodeId: null });
   
   // Reference to the anime.js timeline
   const animationRef = useRef<anime.AnimeTimelineInstance | null>(null);
@@ -118,7 +129,37 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       setNodes((nds) => {
         const newNodes = applyNodeChanges(changes, nds);
         
-        // Update the flow with the new node positions and data
+        // Check if any nodes were removed
+        const removedNodeIds = changes
+          .filter((change): change is NodeRemoveChange => change.type === 'remove')
+          .map(change => change.id);
+        
+        // If nodes were removed, also update the flow
+        if (removedNodeIds.length > 0) {
+          // Filter out removed nodes
+          const updatedNodes = flow.nodes.filter(
+            node => !removedNodeIds.includes(node.id)
+          );
+          
+          // Filter out edges connected to removed nodes
+          const updatedEdges = flow.edges.filter(
+            edge => 
+              !removedNodeIds.includes(edge.source) && 
+              !removedNodeIds.includes(edge.target)
+          );
+          
+          // Update the flow with removed nodes and their connected edges
+          const updatedFlow = {
+            ...flow,
+            nodes: updatedNodes,
+            edges: updatedEdges
+          };
+          
+          onFlowChange(updatedFlow);
+          return newNodes;
+        }
+        
+        // Handle position and data updates for remaining nodes
         const updatedFlow = {
           ...flow,
           nodes: flow.nodes.map(node => {
@@ -367,8 +408,116 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
     event.dataTransfer.dropEffect = 'move';
   }, []);
   
+  // Delete selected nodes
+  const deleteSelectedNodes = useCallback(() => {
+    if (readonly) return;
+    
+    // Get selected nodes
+    const selectedNodes = nodes.filter(node => node.selected);
+    
+    if (selectedNodes.length > 0) {
+      // Get IDs of selected nodes
+      const selectedNodeIds = selectedNodes.map(node => node.id);
+      
+      // Filter out selected nodes
+      const updatedNodes = flow.nodes.filter(
+        node => !selectedNodeIds.includes(node.id)
+      );
+      
+      // Filter out edges connected to selected nodes
+      const updatedEdges = flow.edges.filter(
+        edge => 
+          !selectedNodeIds.includes(edge.source) && 
+          !selectedNodeIds.includes(edge.target)
+      );
+      
+      // Update the flow
+      const updatedFlow = {
+        ...flow,
+        nodes: updatedNodes,
+        edges: updatedEdges
+      };
+      
+      onFlowChange(updatedFlow);
+    }
+  }, [flow, nodes, onFlowChange, readonly]);
+  
+  // Delete a specific node by ID
+  const deleteNodeById = useCallback((nodeId: string) => {
+    if (readonly || !nodeId) return;
+    
+    console.log(`Deleting node with ID: ${nodeId}`);
+    
+    // Filter out the node
+    const updatedNodes = flow.nodes.filter(node => node.id !== nodeId);
+    
+    // Filter out edges connected to the node
+    const updatedEdges = flow.edges.filter(
+      edge => edge.source !== nodeId && edge.target !== nodeId
+    );
+    
+    // Log the changes
+    const removedEdges = flow.edges.filter(
+      edge => edge.source === nodeId || edge.target === nodeId
+    );
+    
+    if (removedEdges.length > 0) {
+      console.log(`Removed ${removedEdges.length} connected edges`);
+    }
+    
+    // Update the flow
+    const updatedFlow = {
+      ...flow,
+      nodes: updatedNodes,
+      edges: updatedEdges
+    };
+    
+    onFlowChange(updatedFlow);
+  }, [flow, onFlowChange, readonly]);
+  
+  // Handle keyboard events for node deletion
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (readonly) return;
+      
+      // Check if Delete key was pressed
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        deleteSelectedNodes();
+      }
+      
+      // Close context menu on Escape key
+      if (event.key === 'Escape') {
+        setContextMenu({ visible: false, x: 0, y: 0, nodeId: null });
+      }
+    },
+    [deleteSelectedNodes, readonly]
+  );
+  
+  // Handle node context menu
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Prevent default context menu
+      event.preventDefault();
+      
+      if (readonly) return;
+      
+      // Show our custom context menu
+      setContextMenu({
+        visible: true,
+        x: event.clientX,
+        y: event.clientY,
+        nodeId: node.id
+      });
+    },
+    [readonly]
+  );
+  
   return (
-    <div className="workflow-canvas" ref={reactFlowWrapper}>
+    <div 
+      className="workflow-canvas" 
+      ref={reactFlowWrapper} 
+      tabIndex={0} 
+      onKeyDown={onKeyDown}>
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
@@ -380,6 +529,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
           onInit={setReactFlowInstance}
           onDrop={onDrop}
           onDragOver={onDragOver}
+          onNodeContextMenu={onNodeContextMenu}
           fitView
           attributionPosition="bottom-right"
           connectionLineStyle={{ stroke: '#ddd', strokeWidth: 2 }}
@@ -452,6 +602,16 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
             </div>
           )}
         </div>
+      )}
+      
+      {/* Context menu */}
+      {contextMenu.visible && contextMenu.nodeId && (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onDelete={() => deleteNodeById(contextMenu.nodeId!)}
+          onClose={() => setContextMenu({ visible: false, x: 0, y: 0, nodeId: null })}
+        />
       )}
     </div>
   );
