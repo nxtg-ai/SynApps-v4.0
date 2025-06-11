@@ -5,6 +5,18 @@ All notable changes to the SynApps project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2025-06-10
+
+### Added
+
+- **Workflow Editor Enhancements**
+  - Added node deletion functionality via keyboard (Delete key) and context menu
+  - Implemented proper cleanup of connected edges when deleting nodes
+  - Added enhanced context menu for workflow nodes with the following features:
+    - Direct access to node configuration
+    - Improved positioning next to nodes
+    - Better styling with icons and dividers
+
 ## [0.5.1] - 2025-06-09
 
 ### Fixed
