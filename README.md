@@ -13,7 +13,11 @@ A lightweight **SynApps Orchestrator** routes messages between these applets, se
 - **One-Click Creation & Extreme Simplicity:** Create an AI workflow with minimal steps (one or two clicks).
 - **Autonomous & Collaborative Agents:** Each applet (agent) runs autonomously but can pass data to others via the orchestrator.
 - **Real-Time Visual Feedback:** See the AI agents at work with an animated graph of nodes (agents) and connections (data flow).
+- **Progressive Node Status Indicators:** Visual indicators show workflow execution progress with colored status dots on each node that light up progressively as steps complete.
 - **Background Execution & Notifications:** Agents run in the background once triggered, with a notification system to alert users of important status changes.
+- **Node-Specific Configuration:** Each node type has its own configuration panel for customizing inputs, prompts, and settings.
+- **Advanced Agent Orchestration:** Enhanced agent-to-agent communication protocols and coordination mechanisms for complex workflows.
+- **Agent Performance Analytics:** Monitoring dashboard and analytics for agent activities and performance metrics.
 - **Openness and Extensibility:** Support for user-editable applets via code for those who want to customize logic.
 
 ## Quick Start
@@ -104,6 +108,12 @@ The MVP includes three core applets:
 - **WriterApplet:** Generates text given a topic or prompt using gpt-4.1.
 - **MemoryApplet:** Stores or retrieves information to maintain context between steps using a vector store.
 - **ArtistApplet:** Creates an image from a text description using Stable Diffusion.
+
+Upcoming applets in development:
+
+- **ResearcherApplet:** Performs web searches and data gathering for informed content creation.
+- **AnalyzerApplet:** Processes and analyzes data to extract insights and patterns.
+- **CoordinatorApplet:** Manages complex workflows with multiple agents, providing oversight and direction.
 
 ## Deployment
 
