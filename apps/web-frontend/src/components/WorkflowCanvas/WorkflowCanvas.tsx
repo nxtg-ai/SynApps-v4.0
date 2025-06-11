@@ -64,7 +64,8 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
     x: number;
     y: number;
     nodeId: string | null;
-  }>({ visible: false, x: 0, y: 0, nodeId: null });
+    nodeType: string | null;
+  }>({ visible: false, x: 0, y: 0, nodeId: null, nodeType: null });
   
   // Reference to the anime.js timeline
   const animationRef = useRef<anime.AnimeTimelineInstance | null>(null);
@@ -480,20 +481,71 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (readonly) return;
       
-      // Check if Delete key was pressed
+      // Delete key or Backspace key
       if (event.key === 'Delete' || event.key === 'Backspace') {
         deleteSelectedNodes();
       }
       
       // Close context menu on Escape key
       if (event.key === 'Escape') {
-        setContextMenu({ visible: false, x: 0, y: 0, nodeId: null });
+        setContextMenu({ visible: false, x: 0, y: 0, nodeId: null, nodeType: null });
       }
     },
     [deleteSelectedNodes, readonly]
   );
   
-  // Handle node context menu
+  // Handle node configuration
+  const handleNodeConfig = useCallback((nodeId: string, configData: any) => {
+    if (readonly) return;
+    
+    // Update node data
+    const updatedFlow = {
+      ...flow,
+      nodes: flow.nodes.map(node => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...configData
+            }
+          };
+        }
+        return node;
+      })
+    };
+    
+    onFlowChange(updatedFlow);
+  }, [flow, onFlowChange, readonly]);
+  
+  // Open node configuration modal
+  const openNodeConfig = useCallback((nodeId: string) => {
+    if (readonly) return;
+    
+    // Find the node
+    const node = flow.nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    console.log(`Opening configuration for node ${nodeId} of type ${node.type}`);
+    
+    // Find the node element in the DOM
+    const nodeElement = document.querySelector(`[data-id="${nodeId}"]`);
+    if (!nodeElement) {
+      console.error(`Could not find node element with ID ${nodeId}`);
+      return;
+    }
+    
+    // Find the config button within the node and click it
+    const configButton = nodeElement.querySelector('.config-toggle') as HTMLButtonElement;
+    if (configButton) {
+      // Programmatically click the config button to open the configuration panel
+      configButton.click();
+    } else {
+      console.error(`Node type ${node.type} does not have a configuration panel`);
+    }
+  }, [flow.nodes, readonly]);
+  
+  // Handle right-click on node
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
       // Prevent default context menu
@@ -501,12 +553,26 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       
       if (readonly) return;
       
+      // Calculate position to place menu right next to the node
+      // Get node dimensions (assuming a standard node size if not available)
+      const nodeWidth = (node as any).width || 150;
+      const nodeHeight = (node as any).height || 40;
+      
+      // Get node position on screen
+      const nodeElement = event.currentTarget as HTMLElement;
+      const nodeRect = nodeElement.getBoundingClientRect();
+      
+      // Position menu to the right of the node
+      const menuX = nodeRect.right + 5; // 5px offset from node
+      const menuY = nodeRect.top;
+      
       // Show our custom context menu
       setContextMenu({
         visible: true,
-        x: event.clientX,
-        y: event.clientY,
-        nodeId: node.id
+        x: menuX,
+        y: menuY,
+        nodeId: node.id,
+        nodeType: node.type || 'applet'
       });
     },
     [readonly]
@@ -609,8 +675,10 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
         <NodeContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          nodeType={contextMenu.nodeType || 'applet'}
           onDelete={() => deleteNodeById(contextMenu.nodeId!)}
-          onClose={() => setContextMenu({ visible: false, x: 0, y: 0, nodeId: null })}
+          onEdit={() => openNodeConfig(contextMenu.nodeId!)}
+          onClose={() => setContextMenu({ visible: false, x: 0, y: 0, nodeId: null, nodeType: null })}
         />
       )}
     </div>

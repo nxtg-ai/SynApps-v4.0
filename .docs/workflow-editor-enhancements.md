@@ -10,6 +10,12 @@ This document tracks planned enhancements for the SynApps v4.0 Workflow Editor.
   - [x] Handle edge cleanup when deleting connected nodes
   - [ ] Add confirmation dialog for deleting nodes with connections
 
+- [x] **Context Menu Enhancements**
+  - [x] Position context menu right next to the node
+  - [x] Add "Edit Configuration" option to open node settings
+  - [x] Add "Cancel" option to close the menu
+  - [x] Improve styling with dividers and icons
+
 - [ ] **Improved Node Positioning**
   - [ ] Fix the node positioning issue (currently fixed at 100,100)
   - [ ] Implement smart positioning algorithm for new nodes
@@ -50,5 +56,6 @@ This document tracks planned enhancements for the SynApps v4.0 Workflow Editor.
 | Enhancement | Status | PR | Date Completed |
 |-------------|--------|-------|---------------|
 | Node Deletion | Completed | - | June 10, 2025 |
+| Context Menu Enhancements | Completed | - | June 10, 2025 |
 
-*Last updated: June 10, 2025 at 16:30*
+*Last updated: June 10, 2025 at 17:45*

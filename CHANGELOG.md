@@ -12,7 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Workflow Editor Enhancements**
   - Added node deletion functionality via keyboard (Delete key) and context menu
   - Implemented proper cleanup of connected edges when deleting nodes
-  - Added context menu support for workflow nodes
+  - Added enhanced context menu for workflow nodes with the following features:
+    - Direct access to node configuration
+    - Improved positioning next to nodes
+    - Better styling with icons and dividers
 
 ## [0.5.1] - 2025-06-09
 
