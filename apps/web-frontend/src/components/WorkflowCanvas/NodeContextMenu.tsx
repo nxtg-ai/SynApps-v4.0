@@ -1,21 +1,21 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import './NodeContextMenu.css';
 
 interface NodeContextMenuProps {
-  x: number;
-  y: number;
+  nodeRect: DOMRect;
+  nodeId: string;
   nodeType: string;
-  onDelete: () => void;
-  onEdit: () => void;
+  onDelete: (nodeId: string) => void;
+  onOpenConfig: (nodeId: string) => void;
   onClose: () => void;
 }
 
-const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ x, y, nodeType, onDelete, onEdit, onClose }) => {
+const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ nodeRect, nodeId, nodeType, onDelete, onOpenConfig, onClose }) => {
   // Create a ref for the menu element
   const menuRef = React.useRef<HTMLDivElement>(null);
   
   // Handle click outside to close the menu
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Only close if clicking outside the menu
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -32,41 +32,30 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ x, y, nodeType, onDel
     };
   }, [onClose]);
 
+  // Calculate position to place menu right next to the node
+  const menuStyle = {
+    position: 'absolute' as const,
+    top: `${nodeRect.top}px`,
+    left: `${nodeRect.right + 5}px`, // 5px offset from the right edge of the node
+    pointerEvents: 'auto' as const
+  };
+  
   return (
     <div 
       className="node-context-menu"
       ref={menuRef}
-      style={{ 
-        position: 'absolute',
-        top: y,
-        left: x,
-        zIndex: 1000
-      }}
+      style={menuStyle}
       onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <ul>
         {/* Only show edit option for applet nodes, not start/end nodes */}
-        {nodeType !== 'start' && nodeType !== 'end' && (
-          <li onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setTimeout(() => {
-              onEdit();
-              onClose();
-            }, 0);
-          }}>
-            <span className="menu-icon">✏️</span> Edit Configuration
+        {nodeType === 'applet' && (
+          <li onClick={() => { onOpenConfig(nodeId); onClose(); }}>
+            <span className="menu-icon">⚙️</span> Edit Configuration
           </li>
         )}
-        <li onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          // Use setTimeout to ensure the event completes before we execute the delete
-          setTimeout(() => {
-            onDelete();
-            onClose();
-          }, 0);
-        }}>
+        <li onClick={() => { onDelete(nodeId); onClose(); }}>
           <span className="menu-icon">🗑️</span> Delete Node
         </li>
         <li className="menu-divider"></li>

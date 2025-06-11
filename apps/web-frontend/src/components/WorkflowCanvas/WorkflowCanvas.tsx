@@ -58,14 +58,18 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
   const [runStatus, setRunStatus] = useState<WorkflowRunStatus | null>(null);
   const [completedNodes, setCompletedNodes] = useState<string[]>([]);
   
-  // Context menu state
+  // State for context menu
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
-    x: number;
-    y: number;
     nodeId: string | null;
     nodeType: string | null;
-  }>({ visible: false, x: 0, y: 0, nodeId: null, nodeType: null });
+    nodeRect: DOMRect | null;
+  }>({
+    visible: false,
+    nodeId: null,
+    nodeType: null,
+    nodeRect: null
+  });
   
   // Reference to the anime.js timeline
   const animationRef = useRef<anime.AnimeTimelineInstance | null>(null);
@@ -488,7 +492,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       
       // Close context menu on Escape key
       if (event.key === 'Escape') {
-        setContextMenu({ visible: false, x: 0, y: 0, nodeId: null, nodeType: null });
+        setContextMenu({ visible: false, nodeId: null, nodeType: null, nodeRect: null });
       }
     },
     [deleteSelectedNodes, readonly]
@@ -553,31 +557,32 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       
       if (readonly) return;
       
-      // Calculate position to place menu right next to the node
-      // Get node dimensions (assuming a standard node size if not available)
-      const nodeWidth = (node as any).width || 150;
-      const nodeHeight = (node as any).height || 40;
-      
-      // Get node position on screen
+      // Get the node element from the event
       const nodeElement = event.currentTarget as HTMLElement;
+      
+      // Get the bounding rectangle of the node element
       const nodeRect = nodeElement.getBoundingClientRect();
       
-      // Position menu to the right of the node
-      const menuX = nodeRect.right + 5; // 5px offset from node
-      const menuY = nodeRect.top;
+      console.log('Node rect:', nodeRect);
+      console.log('Node ID:', node.id);
+      console.log('Node type:', node.type);
       
-      // Show our custom context menu
+      // Show our custom context menu with the node's rect
       setContextMenu({
         visible: true,
-        x: menuX,
-        y: menuY,
         nodeId: node.id,
-        nodeType: node.type || 'applet'
+        nodeType: node.type || 'applet',
+        nodeRect
       });
     },
     [readonly]
   );
   
+  // Close context menu when clicking outside
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(prev => ({ ...prev, visible: false, nodeRect: null }));
+  }, []);
+
   return (
     <div 
       className="workflow-canvas" 
@@ -601,7 +606,7 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
           connectionLineStyle={{ stroke: '#ddd', strokeWidth: 2 }}
           connectionLineType={ConnectionLineType.Bezier}
           snapToGrid={true}
-          snapGrid={[15, 15]}
+          snapGrid={[1, 1]}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           minZoom={0.2}
           maxZoom={4}
@@ -671,14 +676,14 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
       )}
       
       {/* Context menu */}
-      {contextMenu.visible && contextMenu.nodeId && (
+      {contextMenu.visible && contextMenu.nodeRect && (
         <NodeContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          nodeType={contextMenu.nodeType || 'applet'}
-          onDelete={() => deleteNodeById(contextMenu.nodeId!)}
-          onEdit={() => openNodeConfig(contextMenu.nodeId!)}
-          onClose={() => setContextMenu({ visible: false, x: 0, y: 0, nodeId: null, nodeType: null })}
+          nodeRect={contextMenu.nodeRect}
+          nodeId={contextMenu.nodeId || ''}
+          nodeType={contextMenu.nodeType || ''}
+          onClose={closeContextMenu}
+          onDelete={deleteNodeById}
+          onOpenConfig={openNodeConfig}
         />
       )}
     </div>
