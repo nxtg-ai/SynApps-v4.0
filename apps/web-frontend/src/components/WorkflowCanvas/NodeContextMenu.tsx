@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import './NodeContextMenu.css';
 
 interface NodeContextMenuProps {
@@ -34,10 +34,11 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ nodeRect, nodeId, nod
 
   // Calculate position to place menu right next to the node
   const menuStyle = {
-    position: 'absolute' as const,
+    position: 'fixed' as const,
     top: `${nodeRect.top}px`,
     left: `${nodeRect.right + 5}px`, // 5px offset from the right edge of the node
-    pointerEvents: 'auto' as const
+    zIndex: 9999, // Ensure it's above everything else
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)' // Add stronger shadow for better visibility
   };
   
   return (
@@ -49,8 +50,8 @@ const NodeContextMenu: React.FC<NodeContextMenuProps> = ({ nodeRect, nodeId, nod
       onMouseDown={(e) => e.stopPropagation()}
     >
       <ul>
-        {/* Only show edit option for applet nodes, not start/end nodes */}
-        {nodeType === 'applet' && (
+        {/* Only show edit option for configurable nodes, not start/end nodes */}
+        {nodeType !== 'start' && nodeType !== 'end' && (
           <li onClick={() => { onOpenConfig(nodeId); onClose(); }}>
             <span className="menu-icon">⚙️</span> Edit Configuration
           </li>
