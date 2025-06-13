@@ -22,8 +22,11 @@ export interface FlowEdge {
 export interface Flow {
   id: string;
   name: string;
+  description?: string;
+  version?: string;
   nodes: FlowNode[];
   edges: FlowEdge[];
+  metadata?: Record<string, any>;
 }
 
 export interface WorkflowRunStatus {
@@ -31,12 +34,14 @@ export interface WorkflowRunStatus {
   flow_id: string;
   status: 'running' | 'success' | 'error';
   current_applet?: string;
+  completed_applets?: string[]; // Array of completed node IDs
   progress: number;
   total_steps: number;
   start_time: number;
   end_time?: number;
   results: Record<string, any>;
   error?: string;
+  input_data?: Record<string, any>; // Optional field for initial input data
 }
 
 export interface AppletMetadata {

@@ -106,10 +106,18 @@ class WorkflowRunRepository:
             run = result.scalars().first()
             if run:
                 # Update
-                for field in ["status", "current_applet", "progress", "total_steps", "end_time", "results", "error"]:
+                for field in ["status", "current_applet", "progress", "total_steps", "end_time", "results", "input_data", "error"]:
                     if field in run_data:
                         setattr(run, field, run_data[field])
+                
+                # Handle completed_applets separately with try/except since the column might not exist yet
+                if "completed_applets" in run_data:
+                    try:
+                        run.completed_applets = run_data["completed_applets"]
+                    except Exception as e:
+                        print(f"Warning: Could not set completed_applets: {e}")
             else:
+                # Create new WorkflowRun with basic fields
                 run = WorkflowRun(
                     id=run_id,
                     flow_id=run_data.get("flow_id"),
@@ -120,8 +128,16 @@ class WorkflowRunRepository:
                     start_time=run_data.get("start_time", time.time()),
                     end_time=run_data.get("end_time"),
                     results=run_data.get("results", {}),
+                    input_data=run_data.get("input_data", {}),
                     error=run_data.get("error")
                 )
+                
+                # Try to set completed_applets if the column exists
+                if "completed_applets" in run_data:
+                    try:
+                        run.completed_applets = run_data.get("completed_applets", [])
+                    except Exception as e:
+                        print(f"Warning: Could not set completed_applets on new run: {e}")
                 session.add(run)
             await session.commit()
             return run.to_dict()

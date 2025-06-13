@@ -17,6 +17,8 @@ A lightweight **SynApps Orchestrator** routes messages between these applets, se
 - **Background Execution & Notifications:** Agents run in the background once triggered, with a notification system to alert users of important status changes.
 - **Node-Specific Configuration:** Each node type has its own configuration panel for customizing inputs, prompts, and settings.
 - **Advanced Agent Orchestration:** Enhanced agent-to-agent communication protocols and coordination mechanisms for complex workflows.
+- **Conditional Branching:** Dynamic workflow routing based on message content, metadata, or context conditions.
+- **Nested Workflows:** Hierarchical composition of workflows, allowing steps to trigger sub-workflows with context sharing.
 - **Agent Performance Analytics:** Monitoring dashboard and analytics for agent activities and performance metrics.
 - **Openness and Extensibility:** Support for user-editable applets via code for those who want to customize logic.
 
@@ -97,6 +99,9 @@ A lightweight **SynApps Orchestrator** routes messages between these applets, se
 SynApps follows a microkernel architecture:
 
 - **Orchestrator:** A lightweight message routing core that passes data between applets and manages workflow execution.
+  - **Enhanced Workflow Engine:** Supports conditional branching and nested workflows for complex orchestration patterns.
+  - **Conditional Branching Engine:** Evaluates conditions to determine dynamic workflow paths.
+  - **Nested Workflow Engine:** Manages hierarchical workflow execution and context sharing.
 - **Applets:** Self-contained AI micro-agents implementing a standard interface to perform specialized tasks.
 - **Frontend:** React app with a visual workflow editor, built on React Flow and anime.js for animations.
 - **Database:** SQLite with async SQLAlchemy ORM for persistent storage of workflows and execution state.

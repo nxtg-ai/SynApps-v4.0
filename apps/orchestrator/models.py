@@ -94,11 +94,13 @@ class WorkflowRun(Base):
     flow_id = Column(String, ForeignKey("flows.id", ondelete="SET NULL"), nullable=True)
     status = Column(String, nullable=False, default="idle")
     current_applet = Column(String, nullable=True)
+    completed_applets = Column(JSON, nullable=True)  # Store list of completed node IDs
     progress = Column(Integer, nullable=False, default=0)
     total_steps = Column(Integer, nullable=False, default=0)
     start_time = Column(Float, nullable=False)
     end_time = Column(Float, nullable=True)
     results = Column(JSON, nullable=True)
+    input_data = Column(JSON, nullable=True)  # Store the initial input data
     error = Column(String, nullable=True)
     
     def to_dict(self) -> Dict[str, Any]:
@@ -108,11 +110,13 @@ class WorkflowRun(Base):
             "flow_id": self.flow_id,
             "status": self.status,
             "current_applet": self.current_applet,
+            "completed_applets": self.completed_applets or [],
             "progress": self.progress,
             "total_steps": self.total_steps,
             "start_time": self.start_time,
             "end_time": self.end_time,
             "results": self.results or {},
+            "input_data": self.input_data or {},
             "error": self.error
         }
 
@@ -148,17 +152,21 @@ class WorkflowRunStatusModel(BaseModel):
     flow_id: str
     status: str = "idle"
     current_applet: Optional[str] = None
+    completed_applets: List[str] = Field(default_factory=list)  # List of completed node IDs
     progress: int = 0
     total_steps: int = 0
     start_time: float = Field(default_factory=lambda: time.time())
     end_time: Optional[float] = None
     results: Dict[str, Any] = Field(default_factory=dict)
+    input_data: Dict[str, Any] = Field(default_factory=dict)
     error: Optional[str] = None
     
     def dict(self, *args, **kwargs) -> Dict[str, Any]:
         """Override dict method to provide a consistent output."""
         result = super().dict(*args, **kwargs)
-        # Ensure results is never None
+        # Ensure results and input_data are never None
         if result.get("results") is None:
             result["results"] = {}
+        if result.get("input_data") is None:
+            result["input_data"] = {}
         return result

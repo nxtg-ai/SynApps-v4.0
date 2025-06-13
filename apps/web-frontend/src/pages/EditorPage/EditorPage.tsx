@@ -8,6 +8,7 @@ import MainLayout from '../../components/Layout/MainLayout';
 import WorkflowCanvas from '../../components/WorkflowCanvas/WorkflowCanvas';
 import CodeEditor from '../../components/CodeEditor/CodeEditor';
 import TemplateLoader from '../../components/TemplateLoader/TemplateLoader';
+import WorkflowLoader from '../../components/WorkflowLoader/WorkflowLoader';
 import { Flow } from '../../types';
 import { generateId } from '../../utils/flowUtils';
 import apiService from '../../services/ApiService';
@@ -22,11 +23,10 @@ const EditorPage: React.FC<{}> = () => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [showTemplates, setShowTemplates] = useState<boolean>(false);
+  const [showWorkflowLoader, setShowWorkflowLoader] = useState<boolean>(false);
   const [showCodeEditor, setShowCodeEditor] = useState<boolean>(false);
   const [selectedApplet, setSelectedApplet] = useState<string>('');
   const [appletCode, setAppletCode] = useState<string>('');
-  const [inputData, setInputData] = useState<string>('');
-  const [imageGenerator, setImageGenerator] = useState<string>('stability');
   
   // State for workflow results
   const [workflowResults, setWorkflowResults] = useState<any>(null);
@@ -74,16 +74,25 @@ const EditorPage: React.FC<{}> = () => {
         console.log('Status:', status.status);
         console.log('Results:', status.results);
         
-        // More relaxed condition - just check if we have results when status is success
-        if (status.status === 'success' && status.results) {
-          console.log('Setting workflow results:', status.results);
-          setWorkflowResults(status.results);
-          setIsRunning(false);
-          
-          // Force re-render
-          setTimeout(() => {
-            console.log('Current results state:', status.results);
-          }, 100);
+        // Guard against null or undefined flowId
+        if (!flowId || !status.flow_id) return;
+        
+        // Only process updates for our current flow and avoid unnecessary updates
+        if (status.flow_id === flowId) {
+          if (status.status === 'success' && status.results) {
+            console.log('Setting workflow results:', status.results);
+            // Use a functional update to prevent unnecessary state updates
+            setWorkflowResults((prevResults: any) => {
+              // Skip update if results are the same (prevent infinite loop)
+              if (prevResults && JSON.stringify(prevResults) === JSON.stringify(status.results)) {
+                return prevResults;
+              }
+              return status.results;
+            });
+            
+            // Only update running state if it's currently true
+            setIsRunning(prev => prev ? false : prev);
+          }
         }
       });
 
@@ -104,7 +113,11 @@ const EditorPage: React.FC<{}> = () => {
           id: generateId(),
           type: 'start',
           position: { x: 250, y: 25 },
-          data: { label: 'Start' }
+          data: { 
+            label: 'Start',
+            inputData: '',
+            parsedInputData: {} 
+          }
         },
         {
           id: generateId(),
@@ -119,22 +132,32 @@ const EditorPage: React.FC<{}> = () => {
     setFlow(newFlow);
   };
   
-  // Save the flow
-  const saveFlow = async () => {
-    if (!flow) return;
-    
-    setIsSaving(true);
-    
-    try {
-      const response = await apiService.saveFlow(flow);
+    // Save the flow
+    const saveFlow = async () => {
+      if (!flow) return;
       
-      // If this is a new flow, navigate to the new URL
-      if (!flowId) {
-        navigate(`/editor/${response.id}`, { replace: true });
-      }
-    } catch (error) {
-      console.error('Error saving flow:', error);
-    } finally {
+      setIsSaving(true);
+      
+      try {
+        const response = await apiService.saveFlow(flow);
+        console.log('Flow saved:', response);
+        
+        // Always update the flow ID in state to ensure it matches what's in the database
+        setFlow(prevFlow => {
+          if (!prevFlow) return null;
+          return {
+            ...prevFlow,
+            id: response.id
+          };
+        });
+        
+        // Update URL if this is a new flow
+        if (!flowId) {
+          navigate(`/editor/${response.id}`);
+        }
+      } catch (error) {
+        console.error('Error saving flow:', error);
+      } finally {
       setIsSaving(false);
     }
   };
@@ -143,32 +166,36 @@ const EditorPage: React.FC<{}> = () => {
   const runFlow = async () => {
     if (!flow) return;
     
+    // Validate that the workflow has a start node before execution
+    const hasStartNode = flow.nodes.some(node => 
+      node.type === 'start' || node.type === 'startNode'
+    );
+    
+    if (!hasStartNode) {
+      alert('This workflow does not have a Start node. Please add a Start node before running the workflow.');
+      return;
+    }
+    
     setIsRunning(true);
+    setWorkflowResults(null);
     
     try {
-      // Parse the input data
-      let parsedInput: any = {};
-      if (inputData.trim()) {
-        try {
-          parsedInput = JSON.parse(inputData);
-        } catch (e) {
-          // If not valid JSON, use as string
-          parsedInput = { text: inputData };
-        }
-      }
+      // Use an empty object as input - the actual input will come from the Start node's configuration
+      const emptyInput = {};
       
-      // Add image generator preference to context
-      if (!parsedInput.context) {
-        parsedInput.context = {};
-      }
-      parsedInput.context.image_generator = imageGenerator;
+      console.log('Running flow with ID:', flow.id);
+      console.log('Flow nodes:', flow.nodes.map(n => ({ id: n.id, type: n.type })));
       
-      console.log('Running workflow with input:', parsedInput);
-      await apiService.runFlow(flow.id, parsedInput);
+      const response = await apiService.runFlow(flow.id, emptyInput);
+      console.log('Flow execution started:', response);
+      
+      // Results will come through WebSocket
     } catch (error) {
       console.error('Error running flow:', error);
-    } finally {
       setIsRunning(false);
+      
+      // Show error message to user
+      alert('Error running workflow. Please check the console for details.');
     }
   };
   
@@ -298,6 +325,12 @@ class ${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}Applet(BaseApplet):
       >
         Templates
       </button>
+      <button 
+        className="load-button"
+        onClick={() => setShowWorkflowLoader(true)}
+      >
+        Load Workflow
+      </button>
       <input
         type="text"
         className="workflow-name-input"
@@ -325,6 +358,13 @@ class ${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}Applet(BaseApplet):
   return (
     <MainLayout title="Workflow Editor" actions={headerActions}>
       <div className="editor-page">
+        {/* Workflow Loader Modal */}
+        <WorkflowLoader 
+          isOpen={showWorkflowLoader}
+          onClose={() => setShowWorkflowLoader(false)}
+          currentFlowId={flowId}
+        />
+        
         {isLoading ? (
           <div className="loading-state">Loading workflow...</div>
         ) : flow ? (
@@ -336,39 +376,7 @@ class ${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)}Applet(BaseApplet):
               />
             </div>
             <div className="editor-sidebar">
-              <div className="input-panel">
-                <h3>Input Data</h3>
-                <p className="input-help">
-                  Enter input data for your workflow as JSON or plain text
-                </p>
-                <textarea
-                  className="input-textarea"
-                  value={inputData}
-                  onChange={(e) => setInputData(e.target.value)}
-                  placeholder='{"text": "Hello world"} or just type plain text'
-                  rows={8}
-                />
-                
-                <div className="generator-selector">
-                  <label htmlFor="image-generator">Image Generator:</label>
-                  <select
-                    id="image-generator"
-                    value={imageGenerator}
-                    onChange={(e) => setImageGenerator(e.target.value)}
-                    className="generator-select"
-                  >
-                    <option value="stability">Stability AI</option>
-                    <option value="openai">DALL-E 3 (OpenAI)</option>
-                  </select>
-                  <div className="generator-info">
-                    {imageGenerator === 'stability' ? (
-                      <span>Stability AI: Good for artistic and stylized images</span>
-                    ) : (
-                      <span>DALL-E 3: Better understanding of complex prompts</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* Node-specific configuration is now handled by each node component */}
               
               {/* Output Data Panel */}
               {/* Node Panel - Moved above results panel for better visibility */}

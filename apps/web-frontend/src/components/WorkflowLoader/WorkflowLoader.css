@@ -1,0 +1,129 @@
+/* WorkflowLoader Component Styles */
+
+.workflow-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.workflow-loader-modal {
+  width: 500px;
+  max-width: 90%;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+.workflow-loader-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.workflow-loader-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #999;
+}
+
+.close-button:hover {
+  color: #666;
+}
+
+.workflow-loader-search {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.workflow-loader-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.workflow-loader-search input:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+.workflow-loader-content {
+  padding: 0;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+
+.loading-state, .empty-state {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+}
+
+.workflow-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workflow-item {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.workflow-item:hover {
+  background-color: #f5f5f5;
+}
+
+.workflow-item.current {
+  background-color: #e6f7ff;
+  cursor: default;
+}
+
+.workflow-name {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.workflow-id {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.current-badge {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #1890ff;
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+}

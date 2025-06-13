@@ -67,6 +67,8 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
   
   // Convert our Flow format to ReactFlow format
   useEffect(() => {
+    if (!flow) return; // Guard against null flow
+    
     // Convert current flow to string for comparison
     const currentFlowStr = JSON.stringify(flow);
     
@@ -78,36 +80,72 @@ const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({ flow, onFlowChange, rea
     // Update ref with current flow
     prevFlowRef.current = currentFlowStr;
     
-    // Map nodes
-    const rfNodes = flow.nodes.map(node => ({
-      id: node.id,
-      type: node.type === 'writer' || node.type === 'memory' || node.type === 'artist' 
-        ? node.type 
-        : node.type === 'start' || node.type === 'end' 
-          ? node.type 
-          : 'applet',
-      position: node.position,
-      data: {
-        ...node.data,
-        label: node.data.label || node.type,
-        // Initialize node-specific configuration data if not present
-        ...(node.type === 'start' && !node.data.inputData && { inputData: '', parsedInputData: {} }),
-        ...(node.type === 'writer' && !node.data.systemPrompt && { systemPrompt: '' }),
-        ...(node.type === 'artist' && !node.data.systemPrompt && { systemPrompt: '', generator: 'dall-e' })
+    // Map nodes - only if we have nodes to map
+    if (!Array.isArray(flow.nodes)) {
+      console.warn('Flow nodes is not an array:', flow.nodes);
+      return; // Prevent processing invalid data
+    }
+    
+    try {
+      // Map nodes with proper type checking
+      const mappedNodes = flow.nodes.map(node => {
+        if (!node || typeof node !== 'object') {
+          console.warn('Invalid node in flow:', node);
+          return null; // Skip invalid nodes
+        }
+        
+        // Create a properly typed node
+        const typedNode: Node = {
+          id: node.id,
+          type: node.type === 'writer' || node.type === 'memory' || node.type === 'artist' 
+            ? node.type 
+            : node.type === 'start' || node.type === 'end' 
+              ? node.type 
+              : 'applet',
+          position: node.position || { x: 0, y: 0 }, // Default position if missing
+          data: {
+            ...(node.data || {}), // Guard against missing data
+            label: (node.data && node.data.label) || node.type || 'Unknown',
+            // Initialize node-specific configuration data if not present
+            ...(node.type === 'start' && (!node.data || !node.data.inputData) && { inputData: '', parsedInputData: {} }),
+            ...(node.type === 'writer' && (!node.data || !node.data.systemPrompt) && { systemPrompt: '' }),
+            ...(node.type === 'artist' && (!node.data || !node.data.systemPrompt) && { systemPrompt: '', generator: 'dall-e' }),
+            status: (node.data && node.data.status) || 'idle' // Ensure status is always defined
+          }
+        };
+        
+        return typedNode;
+      }).filter((node): node is Node => node !== null);
+      
+      // Map edges - only if we have edges to map
+      if (!Array.isArray(flow.edges)) {
+        console.warn('Flow edges is not an array:', flow.edges);
+        return; // Prevent processing invalid data
       }
-    }));
-    
-    // Map edges
-    const rfEdges = flow.edges.map(edge => ({
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      animated: edge.animated || false,
-    }));
-    
-    // Update state
-    setNodes(rfNodes);
-    setEdges(rfEdges);
+      
+      const mappedEdges = flow.edges.map(edge => {
+        if (!edge || typeof edge !== 'object') {
+          console.warn('Invalid edge in flow:', edge);
+          return null; // Skip invalid edges
+        }
+        
+        // Create a properly typed edge
+        const typedEdge: Edge = {
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          animated: edge.animated || false,
+        };
+        
+        return typedEdge;
+      }).filter((edge): edge is Edge => edge !== null);
+      
+      // Update state with properly typed arrays
+      setNodes(mappedNodes);
+      setEdges(mappedEdges);
+    } catch (error) {
+      console.error('Error processing flow data:', error);
+    }
   }, [flow]);
   
   // Node changes handler

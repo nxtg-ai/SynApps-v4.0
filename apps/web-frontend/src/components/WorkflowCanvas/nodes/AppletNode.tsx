@@ -2,13 +2,33 @@
  * AppletNode component
  * Custom node for applets in the workflow canvas
  */
-import React, { memo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import React, { memo, useCallback } from 'react';
+import { Handle, Position, NodeProps, useReactFlow } from 'reactflow';
+import { NodeConfig } from './NodeConfig';
 import './Nodes.css';
+import './NodeConfig.css';
 
 const AppletNode: React.FC<NodeProps> = ({ data, id, type }) => {
   const appletType = type || 'applet';
   const status = data.status || 'idle';
+  const { setNodes } = useReactFlow();
+  
+  const handleConfigChange = useCallback((nodeId: string, updatedData: Record<string, any>) => {
+    setNodes(nodes => 
+      nodes.map(node => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...updatedData
+            }
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
   
   // Get the icon based on applet type
   const getIcon = () => {
@@ -61,6 +81,15 @@ const AppletNode: React.FC<NodeProps> = ({ data, id, type }) => {
       }}
       data-id={id}
     >
+      {(appletType === 'writer' || appletType === 'artist') && (
+        <NodeConfig 
+          nodeId={id}
+          nodeType={appletType}
+          data={data}
+          onConfigChange={handleConfigChange}
+        />
+      )}
+
       <Handle
         type="target"
         position={Position.Top}
